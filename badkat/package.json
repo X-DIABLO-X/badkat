@@ -1,11 +1,11 @@
 {
   "name": "badkat",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "A desktop cat that closes your doomscrolling.",
   "type": "module",
   "scripts": {
-    "icons": "node scripts/make-icons.mjs",
+    "icons": "node scripts/make-icons.mjs && tauri icon src-tauri/icons/app-icon.png",
     "sync": "node scripts/sync-assets.mjs",
     "prestart": "npm run sync && npm run icons",
     "start": "tauri dev",

@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "BadKat",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "identifier": "app.badkat.desktop",
   "build": {
     "frontendDist": "../src"
@@ -27,11 +27,14 @@
   "bundle": {
     "active": true,
     "createUpdaterArtifacts": true,
-    "targets": ["nsis"],
+    "targets": ["nsis", "msi"],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
-      "icons/icon.ico"
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico",
+      "icons/icon.png"
     ],
     "shortDescription": "A desktop cat that closes your doomscrolling.",
     "longDescription": "BadKat patrols the bottom of your screen. When Shorts, Reels, TikTok or a streaming site holds the foreground for too long, it storms over and closes it."

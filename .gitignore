@@ -7,6 +7,10 @@ target/
 # scratch crate used to check a dependency in isolation; has its own .git
 cargotest/
 
+# `tauri icon` also emits mobile icon sets; this is a desktop-only build
+badkat/src-tauri/icons/android/
+badkat/src-tauri/icons/ios/
+
 # screenshots and logs from the test harnesses
 .shot-*.png
 .shot-*.json

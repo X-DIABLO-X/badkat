@@ -1,6 +1,6 @@
 [package]
 name = "badkat"
-version = "0.1.0"
+version = "0.1.1"
 description = "A desktop cat that closes your doomscrolling."
 edition = "2021"
 rust-version = "1.77"

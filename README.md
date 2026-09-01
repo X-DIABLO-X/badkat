@@ -2,7 +2,7 @@
 
 **A desktop cat that closes your doomscrolling.**
 
-[badkat.cypherion.tech](https://badkat.cypherion.tech) · [Download](https://github.com/X-DIABLO-X/badkat/releases/latest) · [Report a bug](https://github.com/X-DIABLO-X/badkat/issues)
+[badkat.cypherion.tech](https://badkat.cypherion.tech) · [Download](https://github.com/X-DIABLO-X/badkat/releases/latest) · [Report a bug](https://github.com/X-DIABLO-X/badkat/issues) · [Buy me a coffee](https://buymeacoffee.com/cypherion)
 
 BadKat lives along the bottom of your screen. It watches whatever window is in
 front of you, and when Shorts, Reels, TikTok or a streaming site holds the
@@ -17,17 +17,66 @@ and it updates itself from inside the app.
 
 ---
 
+## Features
+
+- **Foreground watch.** Every second it reads the active window's URL, title and
+  process name. Nothing leaves your machine — no account, no telemetry, no
+  network call except the update check.
+- **Per-site leashes.** Each rule gets its own grace period, because a 6-second
+  Short and a two-hour film are not the same problem. Rules are fully editable:
+  match on the URL, the title, the process, or a combination.
+- **Three responses.** Close the browser tab (`Ctrl+W`), close the whole window,
+  or *only complain* — the cat storms over and glares but never acts, which is
+  how you tune rules without losing work.
+- **A countdown you can veto.** Click the cat while it counts down to snooze
+  instead. Set the countdown to zero if you want it merciless.
+- **Never touch list.** Any window whose URL, title or process contains a phrase
+  on this list is left alone, whatever else it matches — the escape hatch for
+  false positives (Zoom, Teams, Meet by default).
+- **Live view.** A panel that shows the exact text your patterns run against and
+  a running log of what the cat decided and why. The honest answer to "why
+  didn't it fire?"
+- **A cat with weight.** It wanders the taskbar, dozes off, and can be picked up
+  and dropped — it swings from the cursor and falls under gravity.
+- **Levels.** Closing a window earns 25 XP; a pat earns 5, rate-limited. Each
+  level costs more than the last. Progress is stored separately from settings,
+  so a slider change can never cost the cat its levels.
+- **Self-updating.** Signed updates are checked and installed from the **Updates**
+  panel — you never have to come back here.
+
 ## Install
 
 Download the installer from the [latest release](https://github.com/X-DIABLO-X/badkat/releases/latest)
-and run it.
+and run it. Both an **NSIS setup `.exe`** and a **Windows `.msi`** are published;
+either works, pick whichever your setup prefers.
 
 Windows SmartScreen will warn you the first time, because the installer is not
 code-signed — a certificate costs more than this project has. Choose
 *More info → Run anyway*, or build it yourself from the source below.
 
 Once installed it checks for its own updates and installs them from the
-**Updates** panel in settings; you should not need to come back here.
+**Updates** panel in settings.
+
+## How to use
+
+The first launch opens the settings window. Everything is a setting and it saves
+as you type — there is no Apply button.
+
+| Panel | What it is for |
+| --- | --- |
+| **Patrol** | The master on/off switch, the close-vs-complain choice, the countdown length, the snooze length, and how often it polls. |
+| **What counts** | The rules table. First match wins, so put specific rules above general ones. *Add a rule* / *Restore defaults* at the bottom. |
+| **Never touch** | One phrase per line. Anything matching is exempt. |
+| **The cat** | Size and animation-speed sliders, wander and doze toggles, the affection stats, and buttons to preview each pose or rehearse a full interception. |
+| **Live view** | What the cat can see right now, and its recent decisions. Start here when a rule is not firing. |
+| **Updates** | Current version, what is available, release notes, and a one-click install. |
+
+Outside the settings window:
+
+- **The tray icon.** Double-click it to reopen settings; right-click for a menu
+  with snooze, show/hide the cat, and quit.
+- **Click the cat** mid-countdown to snooze it. **Drag the cat** to pick it up;
+  let go and it falls.
 
 ## Build from source
 
@@ -37,17 +86,20 @@ Visual Studio C++ build tools that Tauri requires on Windows.
 ```bash
 cd badkat
 npm install
-npm start          # run it
-npm run build      # produce the installer in src-tauri/target/release/bundle
+npm start          # run it (opens the settings window on first launch)
+npm run build      # produce the installers in src-tauri/target/release/bundle
 ```
 
-## What it actually does
+## The matching model
 
-Every second it reads the foreground window's **URL**, **title** and **process
-name**. Nothing leaves your machine — there is no account, no telemetry and no
-network call except the update check.
+A browser only ever exposes the site's own title, so Reels reads as just
+"Instagram" and a Short as "*name* - YouTube" — the words `reels` and `shorts`
+exist only in the URL. But a browser playing fullscreen video drops its address
+bar entirely, so the URL goes blank exactly while you watch a film. Both are
+matched for that reason, which is why some rules use a domain and others a title
+fragment.
 
-Each rule gets its own leash, because not all of it is the same problem:
+Default leashes:
 
 | Rule | Grace |
 | --- | --- |
@@ -58,15 +110,6 @@ Each rule gets its own leash, because not all of it is the same problem:
 | Reddit | 90s |
 | Ordinary YouTube | 240s |
 
-A browser only ever exposes the site's own title, so Reels reads as just
-"Instagram" and a Short as "*name* - YouTube" — the words `reels` and `shorts`
-exist only in the URL. But a browser playing fullscreen video drops its address
-bar entirely, so the URL goes blank exactly while you watch a film. Both are
-matched for that reason. The **Live view** panel shows the exact text your
-patterns run against, which is the only honest answer to "why didn't it fire?"
-
-Anything on the **Never touch** list is left alone whatever else it matches.
-
 ## Levels
 
 Closing a window earns 25 XP; a pat earns 5, rate-limited so leaning on the cat
@@ -76,7 +119,24 @@ so level 2 arrives after two closes and level 10 after about seventy.
 Progress is stored in its own `progress.json`, separate from settings, so
 changing a slider or restoring defaults can never cost the cat its levels.
 
-## Repository layout
+## Contributing
+
+Issues and pull requests are welcome.
+
+- **Bug reports:** include what the **Live view** panel showed — the "Matched
+  against" line and the recent-decisions log are usually the whole story.
+- **Dev setup:** see *Build from source* above. `npm start` runs the app with a
+  live frontend; the settings page also renders standalone in a browser with a
+  mock backend, so UI work needs no rebuild.
+- **The cat rig is copied, not referenced.** Edit `js/` and `css/` at the repo
+  root; `badkat/scripts/sync-assets.mjs` copies them into `badkat/src/lib/` and
+  `site/lib/` on every build. Never edit the copies.
+- **House style:** comments explain *why*, not *what*. Match the surrounding
+  code. Before opening a PR, run `npm start` and click through every settings
+  panel.
+- Be decent to other people in the tracker.
+
+### Repository layout
 
 | Path | What lives there |
 | --- | --- |
@@ -87,9 +147,12 @@ changing a slider or restoring defaults can never cost the cat its levels.
 | `tools/` | small analysis scripts (see `fit-anger-arcs.py`) |
 | `desktop/` | the original Electron prototype, superseded by `badkat/` |
 
-The rig lives at the repo root and is **copied** into both surfaces by
-`badkat/scripts/sync-assets.mjs` rather than referenced, so the cat on the
-website cannot quietly fall a version behind the cat in the product.
+## Support
+
+BadKat is free and open source. If it has saved you an evening, you can put
+something in the tip jar:
+
+<a href="https://buymeacoffee.com/cypherion" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy me a coffee" height="46" width="163"></a>
 
 ---
 
