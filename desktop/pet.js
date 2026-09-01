@@ -168,8 +168,14 @@
     alerting = true;
     const mine = interrupt();
 
-    // storm toward the middle of the screen, ears back, 💢 up
     Cat.setSpeed(1.5);
+
+    if (typeof Cat.alert === "function") {
+      await Cat.alert();
+      if (stale(mine)) { abandon(); return; }
+    }
+
+    // storm toward the middle of the screen, ears back, 💢 up
     Cat.setState("angry");
 
     const label = payload.rule.label;

@@ -45,10 +45,15 @@
       mouth: $("mouth"),
       zzz: $("zzz"),
       anger: $("anger"),
+      alert: $("alert"),
+      alertStem: $("alert") ? $("alert").querySelector(".alert-stem") : null,
+      alertDot: $("alert") ? $("alert").querySelector(".alert-dot") : null,
       hearts: $("hearts"),
       legs: { fn: $("legFN"), ff: $("legFF"), bn: $("legBN"), bf: $("legBF") }
     };
-    var missing = Object.keys(el).filter(function (k) { return k !== "legs" && !el[k]; });
+    var missing = Object.keys(el).filter(function (k) {
+      return k !== "legs" && k !== "alert" && k !== "alertStem" && k !== "alertDot" && !el[k];
+    });
     if (missing.length) {
       throw new Error("cat.js: rig not mounted, missing #" + missing.join(", #"));
     }
@@ -116,8 +121,10 @@
     if (loop) { loop.kill(); loop = null; }
     if (roam) { roam.kill(); roam = null; }
     if (props) { props.kill(); props = null; }
-    gsap.killTweensOf([el.body, el.tail, el.head, el.earL, el.earR,
-      el.eyeL, el.eyeR, el.mouth, el.bodyGroup, el.headBob, el.shadow, el.anger]);
+    var killTargets = [el.body, el.tail, el.head, el.earL, el.earR,
+      el.eyeL, el.eyeR, el.mouth, el.bodyGroup, el.headBob, el.shadow, el.anger];
+    if (el.alert) { killTargets.push(el.alert); }
+    gsap.killTweensOf(killTargets);
     gsap.killTweensOf(heartEls);
     gsap.killTweensOf(angerEls);
     gsap.killTweensOf(zzzEls);
@@ -434,17 +441,23 @@
     twitchCall = gsap.delayedCall(rand(4, 11), twitch);
   }
 
+  /* Helper to determine current horizontal facing (-1 for left, 1 for right) */
+  function getFacing() {
+    return (gsap.getProperty(el.cat, "scaleX") || 1) < 0 ? -1 : 1;
+  }
+
   /* ---------------------------------------------------------------
      props
   --------------------------------------------------------------- */
   function startZzz() {
     var tl = gsap.timeline({ repeat: -1 });
+    var flip = getFacing();
     zzzEls.forEach(function (z, i) {
       gsap.set(z, { attr: { x: 172, y: 84 }, transformOrigin: "50% 50%" });
       tl.fromTo(z,
-        { x: 0, y: 0, opacity: 0, scale: 0.55, rotation: -8 },
+        { x: 0, y: 0, opacity: 0, scaleX: 0.55 * flip, scaleY: 0.55, rotation: -8 },
         {
-          x: 16, y: -30, opacity: 0, scale: 1.25, rotation: 10, duration: 2.6,
+          x: 16, y: -30, opacity: 0, scaleX: 1.25 * flip, scaleY: 1.25, rotation: 10, duration: 2.6,
           ease: "sine.out", keyframes: { opacity: [0, 0.85, 0.85, 0] }
         },
         i * 0.85);
@@ -584,6 +597,108 @@
   }
 
   /* ---------------------------------------------------------------
+     alertNotice — startled exclamation mark `!` then burst into anger 💢
+     ---------------------------------------------------------------
+     Fires when the cat first catches doomscrolling:
+       1. Head snaps upright, ears perk tall, eyes widen alert.
+       2. Exclamation mark `!` pops up above brow with bounce.
+       3. Holds a stunned beat ("Cat noticed it!").
+       4. `!` pops out as the 💢 anger vein bursts in and face morphs angry.
+     Returns GSAP timeline (await-able).
+  --------------------------------------------------------------- */
+  function alertNotice(onNoticed) {
+    if (!el.cat) { return gsap.timeline(); }
+
+    clearLoops();
+    clearLife();
+    gsap.set(el.zzz, { opacity: 0 });
+    gsap.set(heartEls, { opacity: 0 });
+    gsap.set(el.anger, { opacity: 0 });
+
+    current = "alerting";
+    tempo = 1;
+
+    var alertPos = (S.POSES.alert && S.POSES.alert.alert) || { x: 172, y: 32 };
+    var tl = gsap.timeline({
+      onComplete: function () {
+        if (el.alert) { gsap.set(el.alert, { opacity: 0 }); }
+        current = null;
+        if (typeof onNoticed === "function") { onNoticed(); }
+      }
+    });
+
+    // 1. Snap into startled pose
+    var poseTl = applyPose("alert", 0.14);
+    if (poseTl) { tl.add(poseTl, 0); }
+
+    tl.to(el.headBob, {
+      y: -4.5, rotation: -3.5, scaleY: 1.05, scaleX: 0.97,
+      duration: 0.14, ease: "back.out(3.5)", transformOrigin: "50% 100%"
+    }, 0);
+    tl.to(el.bodyGroup, {
+      y: -1.2, scaleY: 1.02, scaleX: 0.98,
+      duration: 0.14, ease: "back.out(2)", svgOrigin: "108 137"
+    }, 0);
+
+    // 2. Pop exclamation mark `!`
+    if (el.alert) {
+      tl.set(el.alert, {
+        x: alertPos.x, y: alertPos.y, opacity: 0,
+        scale: 0.2, rotation: -18, transformOrigin: "50% 100%"
+      }, 0.04);
+      tl.to(el.alert, {
+        opacity: 1, scale: 1.25, rotation: 6,
+        duration: 0.16, ease: "back.out(4)"
+      }, 0.04);
+      tl.to(el.alert, {
+        scale: 1, rotation: 0,
+        duration: 0.10, ease: "power2.out"
+      }, 0.20);
+
+      // 3. Stunned freeze beat ("Cat noticed it!")
+      tl.to(el.headBob, {
+        y: -3.8, rotation: -2, duration: 0.2, ease: "sine.inOut"
+      }, 0.30);
+      tl.to(el.alert, {
+        scale: 1.08, y: alertPos.y - 1.5, duration: 0.25,
+        ease: "sine.inOut", yoyo: true, repeat: 1
+      }, 0.35);
+
+      // 4. `!` pops out and 💢 anger vein bursts in
+      tl.to(el.alert, {
+        opacity: 0, scale: 1.35, y: alertPos.y - 4,
+        duration: 0.14, ease: "power2.in"
+      }, 0.92);
+    }
+
+    var angerPos = (S.POSES.angry && S.POSES.angry.anger) || { x: 176, y: 34 };
+    tl.set(el.anger, {
+      x: angerPos.x, y: angerPos.y, opacity: 0,
+      scale: 0.3, rotation: -20, transformOrigin: "50% 50%"
+    }, 1.02);
+    tl.to(el.anger, {
+      opacity: 1, scale: 1.2, rotation: 8,
+      duration: 0.16, ease: "back.out(3.5)"
+    }, 1.02);
+    tl.to(el.anger, {
+      scale: 1.0, rotation: 0,
+      duration: 0.10, ease: "power2.out"
+    }, 1.18);
+
+    // Morph face to angry
+    var angryPose = S.POSES.angry;
+    morph(el.head, S.closedPath(angryPose.head), 0.18, "power2.out", 1.02, tl);
+    morph(el.earL, S.closedPath(angryPose.earL), 0.18, "power2.out", 1.02, tl);
+    morph(el.earR, S.closedPath(angryPose.earR), 0.18, "power2.out", 1.02, tl);
+    morph(el.eyeL, S.closedPath(S.EYES.left.angry), 0.15, "power2.out", 1.02, tl);
+    morph(el.eyeR, S.closedPath(S.EYES.right.angry), 0.15, "power2.out", 1.02, tl);
+    morph(el.mouth, S.openPath(angryPose.mouth), 0.18, "power2.out", 1.02, tl);
+
+    tl.timeScale(speed || 1);
+    return tl;
+  }
+
+  /* ---------------------------------------------------------------
      public API
   --------------------------------------------------------------- */
   function setState(name, immediate) {
@@ -597,6 +712,7 @@
     clearLoops();
     gsap.set(el.zzz, { opacity: 0 });
     gsap.set(el.anger, { opacity: 0 });
+    if (el.alert) { gsap.set(el.alert, { opacity: 0 }); }
     gsap.set(heartEls, { opacity: 0 });
 
     var dur = immediate ? 0 : 0.62;
@@ -643,11 +759,17 @@
 
   /* Which way the cat faces: 1 = right, -1 = left. */
   function setFacing(dir, dur) {
+    var targetScaleX = dir < 0 ? -1 : 1;
     gsap.to(el.cat, {
-      scaleX: dir < 0 ? -1 : 1,
+      scaleX: targetScaleX,
       duration: dur === undefined ? 0.42 : dur,
       ease: "power2.inOut"
     });
+    if (current === "sleep" && props) {
+      props.kill();
+      props = startZzz();
+      props.timeScale(speed);
+    }
   }
 
   function init(opts) {
@@ -659,6 +781,8 @@
     gsap.set(el.cat, { svgOrigin: "100 104" });
     angerEls.forEach(function (a, i) { a.setAttribute("d", S.openPath(S.ANGER[i])); });
     gsap.set(el.anger, { opacity: 0 });
+    if (el.alertStem) { el.alertStem.setAttribute("d", S.ALERT_STEM); }
+    if (el.alert) { gsap.set(el.alert, { opacity: 0 }); }
     heartEls.forEach(function (h) { h.setAttribute("d", S.HEART); });
     gsap.set(heartEls, { opacity: 0 });
     current = null;
@@ -670,6 +794,10 @@
     setState: setState,
     setSpeed: setSpeed,
     setFacing: setFacing,
+    getFacing: getFacing,
+    /* One-shot startled notice sequence (`!` mark -> 💢 mark).
+       Returns timeline (await it to know when reaction completes). */
+    alert: alertNotice,
     /* One-shot paw strike. `onImpact` fires on the contact frame;
        returns the timeline (await it to know when the cat has settled). */
     swipe: swipe,

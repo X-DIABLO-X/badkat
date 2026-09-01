@@ -216,6 +216,13 @@
     const mine = interrupt();
 
     Cat.setSpeed(baseSpeed);
+
+    // Startled notice reaction: perk upright, pop `!`, stunned pause, burst into 💢
+    if (typeof Cat.alert === "function") {
+      await Cat.alert();
+      if (stale(mine)) { abandon(); return; }
+    }
+
     Cat.setState("angry");                       // the fast four-beat approach
 
     const nagging = payload.mode !== "close";
@@ -309,9 +316,8 @@
   }
 
   /* ---------------------------------------------------------------
-     pointer: click-through unless you are actually on the cat.
-     Drag moves it freely in both axes; letting go above the floor
-     drops it — see fallToFloor().
+     pointer: click-through unless you are actu  /* ---------------------------------------------------------------
+     pointer: accurate hit testing, full 2D drag & realistic gravity
   --------------------------------------------------------------- */
   let interactive = false;
   let dragging = false;
@@ -319,15 +325,40 @@
   let dragDx = 0, dragDy = 0;
   let moved = 0;
 
+  function isFacingLeft() {
+    if (typeof Cat.getFacing === "function") {
+      return Cat.getFacing() < 0;
+    }
+    const catEl = document.getElementById("cat");
+    if (!catEl) { return false; }
+    return (gsap.getProperty(catEl, "scaleX") || 1) < 0;
+  }
+
   function hot(cx, cy) {
-    // the cat occupies roughly x 30..185, y 20..137 of its design box
     const u = unit;
-    const left = x + 30 * u, right = x + 185 * u;
-    const top = y + 15 * u, bottom = y + 140 * u;
-    if (cx >= left && cx <= right && cy >= top && cy <= bottom) { return true; }
-    if (!bubble.hidden) {
+    const facingLeft = isFacingLeft();
+    
+    // Facing left: design X spans [15, 170]. Facing right: spans [30, 185].
+    // Add a 10px grab buffer for responsive clicking
+    const leftPad = (facingLeft ? 15 : 30) * u - 10;
+    const rightPad = (facingLeft ? 170 : 185) * u + 10;
+    const topPad = 10 * u - 10;
+    const bottomPad = 142 * u + 8;
+
+    const left = x + leftPad;
+    const right = x + rightPad;
+    const top = y + topPad;
+    const bottom = y + bottomPad;
+
+    if (cx >= left && cx <= right && cy >= top && cy <= bottom) {
+      return true;
+    }
+
+    if (!bubble.hidden && bubble.style.display !== "none" && (gsap.getProperty(bubble, "opacity") || 1) > 0.1) {
       const b = bubble.getBoundingClientRect();
-      if (cx >= b.left && cx <= b.right && cy >= b.top && cy <= b.bottom) { return true; }
+      if (cx >= b.left - 6 && cx <= b.right + 6 && cy >= b.top - 6 && cy <= b.bottom + 6) {
+        return true;
+      }
     }
     return false;
   }
@@ -338,11 +369,7 @@
     invoke("set_interactive", { on }).catch(() => {});
   }
 
-  /* Gravity, cartoon-weight: position falls off as roughly time², which
-     is what "power2.in" already approximates, so a plain eased tween
-     reads as a real drop without hand-rolling a physics step. Duration
-     scales with drop height so a nudge off the floor is a flick and a
-     drop from the top of the screen actually takes a beat. */
+  /* Gravity, cartoon-weight: kinematic acceleration g = 4200 px/s^2 */
   const GRAVITY_PX_S2 = 4200;
 
   function fallToFloor(mine) {
@@ -351,33 +378,37 @@
       const dropHeight = dest - y;
 
       if (dropHeight <= 2) {
-        // already essentially on the ground — just a tiny settle, no fall
-        land(0.4);
+        land(0.3);
         resolve();
         return;
       }
 
       falling = true;
-      const duration = Math.min(1.1, Math.max(0.14, Math.sqrt((2 * dropHeight) / GRAVITY_PX_S2)));
+      // Exact kinematic duration t = sqrt(2h / g), clamped cleanly
+      const duration = Math.min(1.0, Math.max(0.05, Math.sqrt((2 * dropHeight) / GRAVITY_PX_S2)));
       const tween = gsap.to(pet, {
         y: dest,
-        duration,
+        duration: duration,
         ease: "power2.in",
         onUpdate() { y = gsap.getProperty(pet, "y"); },
         onComplete() {
           falling = false;
           y = dest;
-          land(Math.min(1, dropHeight / 240));   // harder landings squash more
+          land(Math.min(1, dropHeight / 240));
           resolve();
         }
       });
-      // a drag or another fall starting mid-air takes over cleanly
+
       const poll = setInterval(() => {
         if (stale(mine)) {
-          clearInterval(poll); tween.kill(); falling = false;
-          y = gsap.getProperty(pet, "y"); resolve();
+          clearInterval(poll);
+          tween.kill();
+          falling = false;
+          y = gsap.getProperty(pet, "y");
+          resolve();
         }
-      }, 80);
+      }, 60);
+
       tween.eventCallback("onComplete", function () {
         clearInterval(poll);
         falling = false;
@@ -389,16 +420,17 @@
   }
 
   function land(strength) {
-    const squashY = 1 - 0.22 * strength;
-    const squashX = 1 + 0.16 * strength;
+    // 2D volume-preserving squash and elastic spring recovery
+    const squashY = Math.max(0.72, 1 - 0.24 * strength);
+    const squashX = Math.min(1.28, 1 + 0.20 * strength);
     gsap.killTweensOf(pet, "scaleX,scaleY");
     gsap.set(pet, { transformOrigin: "50% 100%" });
     gsap.timeline()
       .to(pet, { scaleY: squashY, scaleX: squashX, duration: 0.07, ease: "power2.out" })
-      .to(pet, { scaleY: 1, scaleX: 1, duration: 0.42, ease: "elastic.out(1, 0.5)" });
+      .to(pet, { scaleY: 1, scaleX: 1, duration: 0.45, ease: "elastic.out(1.2, 0.45)" });
   }
 
-  window.addEventListener("mousemove", (e) => {
+  window.addEventListener("pointermove", (e) => {
     if (dragging) {
       moved += 1;
       setXY(clampX(e.clientX - dragDx), clampY(e.clientY - dragDy));
@@ -407,7 +439,7 @@
     setInteractive(hot(e.clientX, e.clientY));
   });
 
-  window.addEventListener("mousedown", (e) => {
+  window.addEventListener("pointerdown", (e) => {
     if (!hot(e.clientX, e.clientY)) {
       log("miss @" + e.clientX + "," + e.clientY + " cat x=" + Math.round(x) + " y=" + Math.round(y));
       return;
@@ -417,14 +449,22 @@
     moved = 0;
     dragDx = e.clientX - x;
     dragDy = e.clientY - y;
+
+    // Reset any active landing squash/stretch
+    gsap.killTweensOf(pet, "scaleX,scaleY");
+    gsap.to(pet, { scaleX: 1, scaleY: 1, duration: 0.1 });
+
+    try { pet.setPointerCapture(e.pointerId); } catch (_) {}
+
     interrupt();
     abandon();                                    // picking it up cancels any bust in flight
     Cat.setState("bored");                        // dangling in mid-air
   });
 
-  window.addEventListener("mouseup", () => {
+  window.addEventListener("pointerup", (e) => {
     if (!dragging) { return; }
     dragging = false;
+    try { pet.releasePointerCapture(e.pointerId); } catch (_) {}
 
     if (moved < 3) {
       // a click, not a drag
@@ -475,6 +515,7 @@
     alerting = false;
     hideBubble();
     if (e.payload === "swipe") { Cat.swipe(); }
+    else if (e.payload === "alert") { Cat.alert(); }
     else { Cat.setState(e.payload); }
     wait(6, mine).then(() => { if (!stale(mine)) { idleLoop(); } });
   });

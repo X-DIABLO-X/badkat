@@ -44,6 +44,11 @@
     '</g>',
 
     // props — each is only shown by the states that use it
+    '<g id="alert" aria-hidden="true">',
+    '  <path class="alert-stem" d="M0,0" />',
+    '  <circle class="alert-dot" cx="0" cy="0" r="2.2" />',
+    '</g>',
+
     '<g id="anger" aria-hidden="true">',
     '  <path class="anger-mark" d="M0,0" /><path class="anger-mark" d="M0,0" />',
     '  <path class="anger-mark" d="M0,0" /><path class="anger-mark" d="M0,0" />',

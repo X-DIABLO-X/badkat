@@ -19,6 +19,14 @@
   }
 
   function go(state) {
+    if (state === "alert" && typeof Cat.alert === "function") {
+      paint(state);
+      Cat.alert(function () {
+        Cat.setState("angry");
+        paint("angry");
+      });
+      return;
+    }
     Cat.setState(state);
     paint(state);
   }
@@ -30,7 +38,8 @@
   document.addEventListener("keydown", function (e) {
     var map = {
       "1": "walk", "2": "sit", "3": "sleep",
-      "4": "pat", "5": "angry", "6": "bored"
+      "4": "pat", "5": "angry", "6": "bored",
+      "7": "alert"
     };
     if (map[e.key]) { go(map[e.key]); }
   });

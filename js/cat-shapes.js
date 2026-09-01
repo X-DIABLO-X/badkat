@@ -276,6 +276,19 @@
     [-31, -12, 0.80]
   ];
 
+  var HEAD_ALERT = [                   // startled: ears perked straight up, head high
+    [-21, -44, 0.16],
+    [-2, -21, 0.85],
+    [18, -44, 0.16],
+    [29, -14, 0.80],
+    [32, 4, 1.00],
+    [22, 21, 1.00],
+    [0, 27, 1.00],
+    [-21, 21, 1.00],
+    [-32, 4, 1.00],
+    [-31, -14, 0.80]
+  ];
+
   /* Inner ears: each is its own outer ear triangle inset 35% toward
      that triangle's centroid, so it always sits square inside the ear. */
   var EAR_L_AWAKE = [[-19.5, -33, 0.20], [-7.5, -20.5, 0.90], [-26, -17, 0.80]];
@@ -286,6 +299,10 @@
   var EAR_R_ANGRY = [[21.7, -22.4, 0.20], [25.6, -14.6, 0.80], [4.8, -21.1, 0.90]];
   var EAR_L_BORED = [[-20.8, -28.8, 0.20], [-7.8, -19, 0.90], [-26.2, -16, 0.80]];
   var EAR_R_BORED = [[14.8, -29.4, 0.20], [24.2, -15.6, 0.80], [4, -19, 0.90]];
+  var EAR_L_ALERT = [[-20.5, -39, 0.20], [-7.5, -22, 0.90], [-27, -18.5, 0.80]];
+  var EAR_R_ALERT = [[17.2, -39, 0.20], [25, -17.5, 0.80], [3.9, -22, 0.90]];
+
+  function eyeAlert(cx, cy) { return ring(cx, cy - 0.2, 4.4, 5.2); }
 
   var POSES = {
     walk: {
@@ -429,6 +446,27 @@
         bn: [[76, 116], [82, 121], [88, 123]],
         bf: [[70, 117], [76, 122], [82, 124]]
       }
+    },
+
+    /* alert: startled upright, ears high, eyes wide, noticing doomscrolling */
+    alert: {
+      body: [
+        [124, 62, 1], [110, 55, 1], [95, 64, 1], [82, 88, 1], [76, 112, 1],
+        [82, 130, 1], [108, 136, 1], [132, 135, 1], [145, 113, 1], [141, 84, 1]
+      ],
+      head: HEAD_ALERT, earL: EAR_L_ALERT, earR: EAR_R_ALERT,
+      eyes: "alert", mouth: MOUTH.flat,
+      tail: [[86, 124], [64, 126], [46, 122], [32, 112], [26, 98]],
+      tailWidth: 9,
+      headPos: { x: 136, y: 53, rotation: -4, scaleX: 1, scaleY: 1.02 },
+      shadow: { rx: 36, cx: 108, opacity: 0.26 },
+      alert: { x: 172, y: 32 },
+      legs: {
+        fn: [[130, 120], [138, 127], [148, 130]],
+        ff: [[122, 122], [130, 128], [140, 131]],
+        bn: [[95, 119], [99, 122], [103, 124]],
+        bf: [[89, 120], [93, 123], [97, 125]]
+      }
     }
   };
 
@@ -438,29 +476,53 @@
       closed: eyeClosed(-11, -1),
       happy: eyeHappy(-11, -1),
       angry: eyeAngry(-11, -1, 1),
-      bored: eyeBored(-11, -1)
+      bored: eyeBored(-11, -1),
+      alert: eyeAlert(-11, -1)
     },
     right: {
       open: eyeOpen(11, -1),
       closed: eyeClosed(11, -1),
       happy: eyeHappy(11, -1),
       angry: eyeAngry(11, -1, -1),
-      bored: eyeBored(11, -1)
+      bored: eyeBored(11, -1),
+      alert: eyeAlert(11, -1)
     }
   };
 
   /* ---------- props ------------------------------------------------ */
   var HEART = "M0,4.2 C-5.4,-1.2 -4.2,-7.4 0,-3.6 C4.2,-7.4 5.4,-1.2 0,4.2 Z";
 
-  /* The anger mark: four chevrons pointing out at N/E/S/W with clear
-     gaps on the diagonals. Arms any longer than this and neighbouring
-     chevrons merge into a plain diamond outline. Every anchor is
-     tension 0 so the apexes stay sharp. */
-  var ANGER = [
+  /* Alert exclamation stem: tapered manga pill/wedge */
+  var ALERT_STEM = "M-2.6,-22 C-2.6,-24.5 2.6,-24.5 2.6,-22 L1.6,-6.5 C1.6,-5.2 -1.6,-5.2 -1.6,-6.5 Z";
+
+  /* LEGACY ANGER MARK (PRESERVED FOR REVERTIBILITY):
+  var ANGER_LEGACY = [
     [[-3.5, -6.5, 0], [0, -11, 0], [3.5, -6.5, 0]],
     [[6.5, -3.5, 0], [11, 0, 0], [6.5, 3.5, 0]],
     [[3.5, 6.5, 0], [0, 11, 0], [-3.5, 6.5, 0]],
     [[-6.5, 3.5, 0], [-11, 0, 0], [-6.5, -3.5, 0]]
+  ];
+  */
+  var ANGER_LEGACY = [
+    [[-3.5, -6.5, 0], [0, -11, 0], [3.5, -6.5, 0]],
+    [[6.5, -3.5, 0], [11, 0, 0], [6.5, 3.5, 0]],
+    [[3.5, 6.5, 0], [0, 11, 0], [-3.5, 6.5, 0]],
+    [[-6.5, 3.5, 0], [-11, 0, 0], [-6.5, -3.5, 0]]
+  ];
+
+  /* Authentic Japanese manga/anime anger vein mark 💢 (ikari mark):
+     Four curved, bulging lobes radiating from a pinched central waist.
+     Each lobe features convex bulging flanks [tension 1.0] and a crisp apex
+     [tension 0.25], modeling subcutaneous blood vessels swelling under tension. */
+  var ANGER = [
+    // North lobe
+    [[-2.2, -2.5, 1], [-4.6, -6.8, 1], [0, -10.8, 0.25], [4.6, -6.8, 1], [2.2, -2.5, 1]],
+    // East lobe
+    [[2.5, -2.2, 1], [6.8, -4.6, 1], [10.8, 0, 0.25], [6.8, 4.6, 1], [2.5, 2.2, 1]],
+    // South lobe
+    [[2.2, 2.5, 1], [4.6, 6.8, 1], [0, 10.8, 0.25], [-4.6, 6.8, 1], [-2.2, 2.5, 1]],
+    // West lobe
+    [[-2.5, 2.2, 1], [-6.8, 4.6, 1], [-10.8, 0, 0.25], [-6.8, -4.6, 1], [-2.5, -2.2, 1]]
   ];
 
   global.CatShapes = {
@@ -481,6 +543,8 @@
     flickEars: flickEars,
     flattenEars: flattenEars,
     HEART: HEART,
-    ANGER: ANGER
+    ALERT_STEM: ALERT_STEM,
+    ANGER: ANGER,
+    ANGER_LEGACY: ANGER_LEGACY
   };
 })(window);

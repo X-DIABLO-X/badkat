@@ -11,6 +11,7 @@
   --ear:       #c2907f;
   --heart:     #e07a8c;
   --anger:     #e2584f;
+  --alert:     #e2584f;
 }
 
 .fur   { fill: var(--fur); }
@@ -44,12 +45,16 @@
 
 #shadow { fill: #000; opacity: .32; }
 
+.alert-stem { fill: var(--alert); }
+.alert-dot  { fill: var(--alert); }
+#alert { opacity: 0; }
+
 .anger-mark {
   fill: none;
   stroke: var(--anger);
   stroke-width: 2.6;
   stroke-linecap: round;
-  stroke-linejoin: miter;
+  stroke-linejoin: round;
 }
 #anger { opacity: 0; }
 
