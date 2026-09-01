@@ -15,8 +15,19 @@ mod rules;
 mod win;
 
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
+
+#[derive(Default)]
+pub struct HitBox {
+    pub left: AtomicI32,
+    pub top: AtomicI32,
+    pub right: AtomicI32,
+    pub bottom: AtomicI32,
+    pub active: AtomicBool,
+    pub dragging: AtomicBool,
+}
 
 use serde::Serialize;
 use tauri::{
@@ -224,6 +235,25 @@ fn set_interactive(app: AppHandle, on: bool) {
     }
 }
 
+/// Updates the cat's screen bounding box so the native cursor tracker
+/// can reliably enable mouse interactivity before the mouse clicks the window.
+#[tauri::command]
+fn update_cat_box(
+    hit_box: tauri::State<Arc<HitBox>>,
+    left: i32,
+    top: i32,
+    right: i32,
+    bottom: i32,
+    dragging: bool,
+) {
+    hit_box.left.store(left, Ordering::Relaxed);
+    hit_box.top.store(top, Ordering::Relaxed);
+    hit_box.right.store(right, Ordering::Relaxed);
+    hit_box.bottom.store(bottom, Ordering::Relaxed);
+    hit_box.active.store(true, Ordering::Relaxed);
+    hit_box.dragging.store(dragging, Ordering::Relaxed);
+}
+
 #[tauri::command]
 fn open_settings(app: AppHandle) {
     show_settings(&app);
@@ -327,6 +357,7 @@ fn build_overlay(app: &AppHandle) -> tauri::Result<()> {
     // set_interactive), so this doesn't intercept clicks meant for
     // whatever is running underneath.
     let (x, y, w, h) = work_area();
+    eprintln!("[badcat] work_area is: x={x}, y={y}, w={w}, h={h}");
     let window = WebviewWindowBuilder::new(app, "pet", WebviewUrl::App("pet.html".into()))
         .title("Bad Cat")
         .transparent(true)
@@ -366,6 +397,51 @@ fn show_settings(app: &AppHandle) {
     if let Ok(w) = built {
         let _ = w.set_focus();
     }
+}
+
+/* ------------------------------------------------------------------
+   cursor tracker — solves the Windows click-through deadlock
+------------------------------------------------------------------ */
+
+fn spawn_cursor_tracker(app: AppHandle, hit_box: Arc<HitBox>) {
+    std::thread::spawn(move || {
+        let mut is_interactive = false;
+        loop {
+            std::thread::sleep(Duration::from_millis(25));
+            if !hit_box.active.load(Ordering::Relaxed) {
+                continue;
+            }
+            let dragging = hit_box.dragging.load(Ordering::Relaxed);
+            let hover = if dragging {
+                true
+            } else {
+                #[cfg(windows)]
+                {
+                    use windows::Win32::Foundation::POINT;
+                    use windows::Win32::UI::WindowsAndMessaging::GetCursorPos;
+                    let mut pt = POINT::default();
+                    if unsafe { GetCursorPos(&mut pt) }.is_ok() {
+                        let l = hit_box.left.load(Ordering::Relaxed);
+                        let t = hit_box.top.load(Ordering::Relaxed);
+                        let r = hit_box.right.load(Ordering::Relaxed);
+                        let b = hit_box.bottom.load(Ordering::Relaxed);
+                        pt.x >= l && pt.x <= r && pt.y >= t && pt.y <= b
+                    } else {
+                        false
+                    }
+                }
+                #[cfg(not(windows))]
+                { false }
+            };
+
+            if hover != is_interactive {
+                if let Some(w) = app.get_webview_window("pet") {
+                    let _ = w.set_ignore_cursor_events(!hover);
+                    is_interactive = hover;
+                }
+            }
+        }
+    });
 }
 
 /* ------------------------------------------------------------------
@@ -622,15 +698,31 @@ pub fn run() {
             }));
             app.manage(state.clone());
 
+            let hit_box = Arc::new(HitBox::default());
+            app.manage(hit_box.clone());
+
+            eprintln!("[badcat] building overlay...");
             build_overlay(&handle)?;
+            eprintln!("[badcat] overlay built ok!");
+
+            eprintln!("[badcat] building tray...");
             build_tray(&handle, state.clone())?;
+            eprintln!("[badcat] tray built ok!");
+
+            eprintln!("[badcat] spawning cursor tracker...");
+            spawn_cursor_tracker(handle.clone(), hit_box);
+            eprintln!("[badcat] cursor tracker spawned ok!");
+
+            eprintln!("[badcat] spawning monitor...");
             spawn_monitor(handle.clone(), state);
+            eprintln!("[badcat] monitor spawned ok!");
 
             // first run has nothing configured yet; --settings forces it
             if first_run || std::env::args().any(|a| a == "--settings") {
                 show_settings(&handle);
             }
 
+            eprintln!("[badcat] setup completed successfully!");
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -642,6 +734,7 @@ pub fn run() {
             snooze,
             cancel_snooze,
             set_interactive,
+            update_cat_box,
             open_settings,
             set_cat_visible,
             preview_bust,

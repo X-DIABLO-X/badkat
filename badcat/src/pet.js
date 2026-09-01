@@ -25,6 +25,7 @@
   // this is the only way to see what went wrong, so keep it for real
   // failure paths (never for routine per-frame chatter).
   const log = (m) => invoke("jslog", { msg: String(m) }).catch(() => {});
+  log(">>> pet.js loading started! <<<");
   window.addEventListener("error", (e) => log("ERROR " + e.message + " @" + e.lineno));
 
   const pet = document.getElementById("pet");
@@ -62,7 +63,12 @@
   const clampX = (v) => Math.min(maxX(), Math.max(EDGE, v));
   const clampY = (v) => Math.min(floorY(), Math.max(minY(), v));
 
-  function setXY(nx, ny) { x = nx; y = ny; gsap.set(pet, { x, y }); }
+  function setXY(nx, ny) {
+    x = nx;
+    y = ny;
+    gsap.set(pet, { x, y });
+    syncCatBox(dragging);
+  }
   function setX(nx) { setXY(nx, y); }
 
   function applyCat(cat) {
@@ -170,18 +176,20 @@
     bubbleTween = gsap.fromTo(bubble,
       { opacity: 0, y: 8, scale: 0.94 },
       { opacity: 1, y: 0, scale: 1, duration: 0.28, ease: "back.out(2)", transformOrigin: "50% 100%" });
+    syncCatBox(dragging);
   }
 
   function updateBubble(count, kind) {
     bubbleCount.textContent = count || "";
     if (kind) { bubble.className = "bubble is-" + kind; }
+    syncCatBox(dragging);
   }
 
   function hideBubble() {
     if (bubbleTween) { bubbleTween.kill(); }
     bubbleTween = gsap.to(bubble, {
       opacity: 0, y: 6, duration: 0.22, ease: "power2.in",
-      onComplete() { bubble.hidden = true; }
+      onComplete() { bubble.hidden = true; syncCatBox(dragging); }
     });
   }
 
@@ -316,7 +324,6 @@
   }
 
   /* ---------------------------------------------------------------
-     pointer: click-through unless you are actu  /* ---------------------------------------------------------------
      pointer: accurate hit testing, full 2D drag & realistic gravity
   --------------------------------------------------------------- */
   let interactive = false;
@@ -334,16 +341,46 @@
     return (gsap.getProperty(catEl, "scaleX") || 1) < 0;
   }
 
+  function syncCatBox(isDragging) {
+    const u = unit;
+    const facingLeft = isFacingLeft();
+    const leftPad = (facingLeft ? 15 : 30) * u - 14;
+    const rightPad = (facingLeft ? 170 : 185) * u + 14;
+    const topPad = 10 * u - 14;
+    const bottomPad = 142 * u + 10;
+
+    let bLeft = x + leftPad;
+    let bTop = y + topPad;
+    let bRight = x + rightPad;
+    let bBottom = y + bottomPad;
+
+    if (!bubble.hidden && bubble.style.display !== "none" && (gsap.getProperty(bubble, "opacity") || 1) > 0.1) {
+      const b = bubble.getBoundingClientRect();
+      bLeft = Math.min(bLeft, b.left - 10);
+      bTop = Math.min(bTop, b.top - 10);
+      bRight = Math.max(bRight, b.right + 10);
+      bBottom = Math.max(bBottom, b.bottom + 10);
+    }
+
+    invoke("update_cat_box", {
+      left: Math.round(bLeft),
+      top: Math.round(bTop),
+      right: Math.round(bRight),
+      bottom: Math.round(bBottom),
+      dragging: Boolean(isDragging)
+    }).catch(() => {});
+  }
+
   function hot(cx, cy) {
     const u = unit;
     const facingLeft = isFacingLeft();
     
     // Facing left: design X spans [15, 170]. Facing right: spans [30, 185].
-    // Add a 10px grab buffer for responsive clicking
-    const leftPad = (facingLeft ? 15 : 30) * u - 10;
-    const rightPad = (facingLeft ? 170 : 185) * u + 10;
-    const topPad = 10 * u - 10;
-    const bottomPad = 142 * u + 8;
+    // Add a grab buffer for responsive clicking
+    const leftPad = (facingLeft ? 15 : 30) * u - 12;
+    const rightPad = (facingLeft ? 170 : 185) * u + 12;
+    const topPad = 10 * u - 12;
+    const bottomPad = 142 * u + 10;
 
     const left = x + leftPad;
     const right = x + rightPad;
@@ -356,7 +393,7 @@
 
     if (!bubble.hidden && bubble.style.display !== "none" && (gsap.getProperty(bubble, "opacity") || 1) > 0.1) {
       const b = bubble.getBoundingClientRect();
-      if (cx >= b.left - 6 && cx <= b.right + 6 && cy >= b.top - 6 && cy <= b.bottom + 6) {
+      if (cx >= b.left - 8 && cx <= b.right + 8 && cy >= b.top - 8 && cy <= b.bottom + 8) {
         return true;
       }
     }
@@ -390,10 +427,14 @@
         y: dest,
         duration: duration,
         ease: "power2.in",
-        onUpdate() { y = gsap.getProperty(pet, "y"); },
+        onUpdate() {
+          y = gsap.getProperty(pet, "y");
+          syncCatBox(false);
+        },
         onComplete() {
           falling = false;
           y = dest;
+          syncCatBox(false);
           land(Math.min(1, dropHeight / 240));
           resolve();
         }
@@ -405,6 +446,7 @@
           tween.kill();
           falling = false;
           y = gsap.getProperty(pet, "y");
+          syncCatBox(false);
           resolve();
         }
       }, 60);
@@ -413,6 +455,7 @@
         clearInterval(poll);
         falling = false;
         y = dest;
+        syncCatBox(false);
         land(Math.min(1, dropHeight / 240));
         resolve();
       });
@@ -430,21 +473,19 @@
       .to(pet, { scaleY: 1, scaleX: 1, duration: 0.45, ease: "elastic.out(1.2, 0.45)" });
   }
 
-  window.addEventListener("pointermove", (e) => {
+  function onPointerMove(e) {
     if (dragging) {
       moved += 1;
       setXY(clampX(e.clientX - dragDx), clampY(e.clientY - dragDy));
       return;
     }
     setInteractive(hot(e.clientX, e.clientY));
-  });
+  }
 
-  window.addEventListener("pointerdown", (e) => {
+  function onPointerDown(e) {
     if (!hot(e.clientX, e.clientY)) {
-      log("miss @" + e.clientX + "," + e.clientY + " cat x=" + Math.round(x) + " y=" + Math.round(y));
       return;
     }
-    log("grabbed @" + e.clientX + "," + e.clientY);
     dragging = true;
     moved = 0;
     dragDx = e.clientX - x;
@@ -454,17 +495,17 @@
     gsap.killTweensOf(pet, "scaleX,scaleY");
     gsap.to(pet, { scaleX: 1, scaleY: 1, duration: 0.1 });
 
-    try { pet.setPointerCapture(e.pointerId); } catch (_) {}
+    syncCatBox(true);
 
     interrupt();
     abandon();                                    // picking it up cancels any bust in flight
     Cat.setState("bored");                        // dangling in mid-air
-  });
+  }
 
-  window.addEventListener("pointerup", (e) => {
+  function onPointerUp() {
     if (!dragging) { return; }
     dragging = false;
-    try { pet.releasePointerCapture(e.pointerId); } catch (_) {}
+    syncCatBox(false);
 
     if (moved < 3) {
       // a click, not a drag
@@ -481,7 +522,14 @@
       Cat.setState("sit");
       wait(0.6, mine).then(() => { if (!stale(mine)) { idleLoop(); } });
     });
-  });
+  }
+
+  window.addEventListener("pointermove", onPointerMove);
+  window.addEventListener("mousemove", onPointerMove);
+  window.addEventListener("pointerdown", onPointerDown);
+  window.addEventListener("mousedown", onPointerDown);
+  window.addEventListener("pointerup", onPointerUp);
+  window.addEventListener("mouseup", onPointerUp);
 
   window.addEventListener("dblclick", () => { invoke("open_settings", {}).catch(() => {}); });
 
@@ -526,7 +574,10 @@
   setXY(Math.round((window.innerWidth - boxW) / 2), floorY());
 
   invoke("get_config", {})
-    .then((cfg) => applyCat(cfg && cfg.cat))
+    .then((cfg) => {
+      applyCat(cfg && cfg.cat);
+      syncCatBox(false);
+    })
     .catch(() => {});
 
   idleLoop();
