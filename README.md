@@ -1,50 +1,112 @@
-# morphcat
+# Bad Cat
 
-A sprite-style SVG cat with **walk**, **sit**, **sleep**, **pat**, **angry** and
-**bored** states, animated with
-[GSAP MorphSVGPlugin](https://gsap.com/docs/v3/Plugins/MorphSVGPlugin/).
+**A desktop cat that closes your doomscrolling.**
 
-There is one rig. Every state is a full set of path keyframes, and every
-transition between states is a real shape morph — nothing is swapped out or
-cross-faded.
+[badkat.cypherion.tech](https://badkat.cypherion.tech) · [Download](https://github.com/X-DIABLO-X/badcat/releases/latest) · [Report a bug](https://github.com/X-DIABLO-X/badcat/issues)
 
-The same rig drives two surfaces:
+Bad Cat lives along the bottom of your screen. It watches whatever window is in
+front of you, and when Shorts, Reels, TikTok or a streaming site holds the
+foreground for longer than you allowed it, the cat gets up, walks over, and taps
+the window closed with one paw.
 
-- **this page** — a demo stage for looking at the character and its states
-- **[`desktop/`](desktop/README.md)** — a Windows tray app where the cat lives
-  along the bottom of your screen, spots Shorts / Reels / TikTok in the
-  foreground window, storms over and closes it
+Click it during the countdown and it relents. Pick it up and it dangles, then
+falls when you let go. Close enough windows and it levels up.
 
-## Run it
+Windows 10 and 11. Installs to your user folder, so it needs no admin rights,
+and it updates itself from inside the app.
+
+---
+
+## Install
+
+Download the installer from the [latest release](https://github.com/X-DIABLO-X/badcat/releases/latest)
+and run it.
+
+Windows SmartScreen will warn you the first time, because the installer is not
+code-signed — a certificate costs more than this project has. Choose
+*More info → Run anyway*, or build it yourself from the source below.
+
+Once installed it checks for its own updates and installs them from the
+**Updates** panel in settings; you should not need to come back here.
+
+## Build from source
+
+Needs [Rust](https://rustup.rs) and [Node](https://nodejs.org) 20+, plus the
+Visual Studio C++ build tools that Tauri requires on Windows.
+
+```bash
+cd badcat
+npm install
+npm start          # run it
+npm run build      # produce the installer in src-tauri/target/release/bundle
+```
+
+## What it actually does
+
+Every second it reads the foreground window's **URL**, **title** and **process
+name**. Nothing leaves your machine — there is no account, no telemetry and no
+network call except the update check.
+
+Each rule gets its own leash, because not all of it is the same problem:
+
+| Rule | Grace |
+| --- | --- |
+| YouTube Shorts, Instagram Reels, TikTok | 6s |
+| Facebook Reels | 10s |
+| Streaming sites | 20s |
+| Instagram proper | 45s |
+| Reddit | 90s |
+| Ordinary YouTube | 240s |
+
+A browser only ever exposes the site's own title, so Reels reads as just
+"Instagram" and a Short as "*name* - YouTube" — the words `reels` and `shorts`
+exist only in the URL. But a browser playing fullscreen video drops its address
+bar entirely, so the URL goes blank exactly while you watch a film. Both are
+matched for that reason. The **Live view** panel shows the exact text your
+patterns run against, which is the only honest answer to "why didn't it fire?"
+
+Anything on the **Never touch** list is left alone whatever else it matches.
+
+## Levels
+
+Closing a window earns 25 XP; a pat earns 5, rate-limited so leaning on the cat
+does not farm it. Each level costs more than the last (50, 65, 80, 105, 135, …),
+so level 2 arrives after two closes and level 10 after about seventy.
+
+Progress is stored in its own `progress.json`, separate from settings, so
+changing a slider or restoring defaults can never cost the cat its levels.
+
+## Repository layout
+
+| Path | What lives there |
+| --- | --- |
+| `badcat/` | the Tauri app — Rust backend in `src-tauri/`, dashboard in `src/` |
+| `site/` | the landing page at badkat.cypherion.tech |
+| `js/`, `css/` | the canonical cat rig, copied into the app and the site by `sync-assets.mjs` |
+| `index.html` | a demo stage for looking at the character on its own |
+| `tools/` | small analysis scripts (see `fit-anger-arcs.py`) |
+| `desktop/` | the original Electron prototype, superseded by `badcat/` |
+
+The rig lives at the repo root and is **copied** into both surfaces by
+`badcat/scripts/sync-assets.mjs` rather than referenced, so the cat on the
+website cannot quietly fall a version behind the cat in the product.
+
+---
+
+# The animation rig
+
+The rest of this is about how the character is built. One rig drives every
+surface: each state is a full set of path keyframes, and every transition is a
+real shape morph — nothing is swapped out or cross-faded.
+
+Run the demo stage with any static server:
 
 ```bash
 python -m http.server 5178
 ```
 
-Then open <http://localhost:5178>. Any static server works; `file://` works too,
-since the scripts are plain globals rather than ES modules.
-
 Controls: the six buttons or keys `1`–`6`. Clicking the cat pats it — except a
-sleeping cat, which wakes up cross. The speed slider retimes the idle loop and
-the roaming walk together.
-
-## Files
-
-| File | What lives there |
-| --- | --- |
-| `index.html` | the demo page |
-| `js/cat-rig.js` | the SVG markup for the character, mounted by both surfaces |
-| `js/cat-shapes.js` | all geometry: the path builder, the poses, the walk-cycle generator |
-| `js/cat.js` | the controller: pose morphs, per-state loops, blinks, roaming |
-| `js/main.js` | button / keyboard / slider wiring for the demo |
-| `css/cat.css` | the character's own paint, shared by both surfaces |
-| `css/style.css` | demo page chrome |
-| `desktop/` | the Electron tray app — see its own README |
-
-`cat-rig.js` and `cat.css` exist so the demo and the desktop overlay cannot
-drift apart: the element ids `cat.js` reaches for are defined in exactly one
-place, and `cat.js` resolves them in `init()` rather than at load, so script
-order does not matter.
+sleeping cat, which wakes up cross.
 
 ## How the rig is put together
 
@@ -57,7 +119,8 @@ order does not matter.
   #legBN #legFN               near legs
   #headBob > #headGroup       bob offset outside, pose transform inside
     #head #earL #earR #eyeL #eyeR #mouth
-  #hand  #hearts  #zzz         props, only shown by the states that use them
+  #anger #pawprint #levelup #xpFloat #hearts #zzz
+                              props, only shown by the states that use them
 ```
 
 The head is a separate shape drawn over the body in the same fill, so the two
@@ -65,6 +128,11 @@ read as one silhouette while staying independently animatable. `#headBob` exists
 purely so the idle bob (`y`) never fights the pose placement (`x`/`y`/`rotation`)
 on `#headGroup` — two translate channels on one element would overwrite each
 other.
+
+Element ids are defined in exactly one place (`js/cat-rig.js`) and resolved in
+`init()` rather than at load, so script order does not matter. It also means the
+rig can only be mounted **once per page**: mount it twice and the controller has
+two `#cat` elements to choose between and will drive the wrong one.
 
 ## Why the poses are point arrays, not path strings
 
@@ -161,7 +229,7 @@ than the legs rather than buzzing along with them.
 `swayTail()` — the old rigid rotation — is still used where a tail genuinely
 should snap: the sit flick, the angry lash, the bored thump.
 
-## The other four states
+## The states
 
 **sit** — upright teardrop body, tail sweeping out to the side with the tip
 lifting, front paws just clearing the chest. The idle is a slow breath plus a
@@ -169,7 +237,10 @@ lazy two-beat tail flick.
 
 **sleep** — a flat loaf, ears dropped, tail wrapped around the front, eyes
 morphed to closed lids, and the back legs tucked inside the silhouette. The
-breath is deeper and slower, and three `z`s drift up from the head.
+breath is deeper and slower, and three `z`s drift up from the head. The `z`s are
+the only glyphs in the rig, so they are the only thing a mirror breaks: facing
+left sets `scaleX: -1` on `#cat`, which is right for every body part and
+backwards for text, so each `z` carries a counter-flip of its own.
 
 **pat** — the cat squashes twice a cycle under an unseen hand. The head
 compresses and springs back on `elastic.out`, the ears fold and pop up, the body
@@ -180,16 +251,26 @@ mitten in this flat style read as a hat sitting on the cat's head.
 **angry** — the same four-beat gait as `walk` run ~1.8× faster, with the head
 dropped, the ears pinned flat, eyes narrowed to slits rotated 19° so the inner
 corners drive down, the tail held out stiff behind, and a 💢 anger mark popping
-and throbbing over the brow. It is a cat stomping towards you, not a cat arching
-its back — which is what the desktop app needs when it comes to close your tab.
+and throbbing over the brow.
 
-The 💢 is four chevrons pointing out at N/E/S/W, every anchor at tension 0 so
-the apexes stay sharp. The arms have to stay short: any longer and neighbouring
-chevrons merge into a plain diamond outline.
+The 💢 is three arc bands. The thing that makes it read correctly is that each
+arc's **centre of curvature sits outside the symbol**, on that arm's own bearing,
+so the arms bow *inward* and their tips splay out — the three gaps between them
+then form a three-way junction. Concentric arcs sharing one centre in the middle
+curve the other way and just read as a broken ring.
+[`tools/fit-anger-arcs.py`](tools/fit-anger-arcs.py) recovers that geometry from
+a reference image by fitting, per arm, the centre that makes its pixels
+equidistant — and reports whether that centre lands inside or outside, which is
+the one measurement that separates the two constructions.
 
 **bored** — slumped flat, front legs shoved forward, ears at half mast, eyes
 half-lidded. The head sinks and jerks back up twice a cycle on `back.out`, and the
 tail lifts and drops in two listless thumps.
+
+**confront / swipe** — the close animation. The cat plants on all fours, holds
+the glare through the countdown, then one foreleg cocks, whips forward and lands.
+The window is closed on the exact contact frame, so the tap reads as the thing
+that did it, and a pale paw print pops where it struck.
 
 Every eye state is the same 6-point ring sampled the same way — open, closed,
 happy, angry, bored — so any expression melts into any other with no popping, and
@@ -204,7 +285,12 @@ a blink is one morph to `closed` and back to whatever the current pose asks for.
   state without extra art.
 - **Turning around**: at the end of a lap the cat tweens `scaleX` from `1` to
   `-1`, passing through zero. It reads as a 2D sprite pivoting in place.
-  Leaving the walk state tweens the facing back to `1` and glides `x` to centre.
+- **State changes kill their own timelines.** A pose morph is a timeline, and
+  killing its child tweens still leaves the timeline to run out its duration and
+  fire `onComplete` — which is how a superseded pose used to start the *previous*
+  state's walk cycle underneath the new one's body, leaving the cat sitting and
+  walking at once. Pose and one-shot timelines are tracked and killed, and a
+  generation counter makes late callbacks bail.
 - **Layering**: the tail sits inside `#bodyGroup` *before* `#body`, so it is
   always behind the cat. Poses route the tail outside the body silhouette on
   purpose — a tail hidden under the body just reads as a missing tail.
@@ -212,7 +298,7 @@ a blink is one morph to `closed` and back to whatever the current pose asks for.
   back to setting `d` directly at the end of each tween. Poses snap instead of
   flowing, but nothing breaks, and the page says so in the corner of the stage.
 
-## Adding a fourth state
+## Adding a state
 
 1. Add an entry to `POSES` in `js/cat-shapes.js`. Copy the closest existing pose
    and move the anchors — keep the count and the order identical.
@@ -224,3 +310,7 @@ A pose with `gait: true` reuses the walk cycle and the roam instead of a static
 leg pose, with `tempo` scaling both together — that is all `angry` is.
 
 Nothing else needs to change; the pose morphs are driven entirely off the table.
+
+## Licence
+
+MIT — see [LICENSE](LICENSE).

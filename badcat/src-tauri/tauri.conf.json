@@ -13,8 +13,20 @@
       "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
     }
   },
+  "plugins": {
+    "updater": {
+      "active": true,
+      "dialog": false,
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDMyNDAzM0QxMzMwOUYyNUYKUldSZjhna3owVE5BTWd3M1JXWUVQVEtZZll1SnVOdDhZV25HRGRKVUJGLzd4RTFQR0Q3WlZDdmsK",
+      "endpoints": [
+        "https://github.com/X-DIABLO-X/badcat/releases/latest/download/latest.json"
+      ],
+      "windows": { "installMode": "passive" }
+    }
+  },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "targets": ["nsis"],
     "icon": [
       "icons/32x32.png",

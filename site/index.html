@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Bad Cat — a desktop cat that closes your doomscrolling</title>
+<meta name="description" content="Bad Cat lives along the bottom of your screen. When Shorts, Reels or TikTok hold the foreground too long, it walks over and closes the window. Free and open source for Windows." />
+
+<meta property="og:title" content="Bad Cat" />
+<meta property="og:description" content="A desktop cat that closes your doomscrolling. Free and open source for Windows." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://badkat.cypherion.tech" />
+
+<link rel="icon" href="favicon.ico" />
+<link rel="stylesheet" href="lib/cat.css" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<header class="nav">
+  <!-- a static icon, not a second rig: the rig hard-codes element ids,
+       so mounting it twice on one page would give the controller two
+       #cat elements to choose between and it would drive the wrong one -->
+  <a class="brand" href="/">
+    <img class="brandmark" src="icon.png" alt="" width="26" height="26" />
+    <span>Bad Cat</span>
+  </a>
+  <nav>
+    <a href="#how">How it works</a>
+    <a href="#levels">Levels</a>
+    <a href="#download">Download</a>
+    <a class="ghost" href="https://github.com/X-DIABLO-X/badcat" target="_blank" rel="noopener">GitHub</a>
+  </nav>
+</header>
+
+<main>
+
+  <!-- ---------------- hero ---------------- -->
+  <section class="hero">
+    <div class="hero-copy">
+      <p class="eyebrow">Free · open source · Windows</p>
+      <h1>Your cat has opinions<br />about your screen time.</h1>
+      <p class="lede">
+        Bad Cat sits along the bottom of your screen. When Shorts, Reels, TikTok or a
+        streaming site holds the foreground for too long, it gets up, walks over, and
+        taps the window closed with one paw.
+      </p>
+      <div class="cta">
+        <a class="btn primary" href="#download">Download for Windows</a>
+        <a class="btn" href="https://github.com/X-DIABLO-X/badcat" target="_blank" rel="noopener">View source</a>
+      </div>
+      <p class="fineprint" id="heroVersion">Loading the latest release…</p>
+    </div>
+
+    <!-- the live rig: the real cat, not a screenshot -->
+    <div class="stage" id="stage">
+      <div class="desk">
+        <svg class="scene" viewBox="0 0 300 170" aria-label="An animated cat sitting on a desk">
+          <g id="sceneCat"></g>
+        </svg>
+        <div class="floorline"></div>
+      </div>
+      <div class="poserow" id="poseRow">
+        <button data-state="sit" class="on">Sit</button>
+        <button data-state="walk">Walk</button>
+        <button data-state="sleep">Sleep</button>
+        <button data-state="pat">Pat</button>
+        <button data-state="angry">Angry</button>
+        <button data-state="bored">Bored</button>
+        <button data-act="swipe">Swipe</button>
+        <button data-act="levelup">Level up</button>
+      </div>
+      <p class="stagehint">That's the actual character, running the same rig as the app. Poke it.</p>
+    </div>
+  </section>
+
+  <!-- ---------------- how ---------------- -->
+  <section id="how" class="band">
+    <h2>How it works</h2>
+    <div class="cards">
+      <article>
+        <span class="num">01</span>
+        <h3>It watches the foreground</h3>
+        <p>
+          Every second it reads the window in front of you — the URL, the title and the
+          process. Nothing is uploaded and nothing is logged; the check happens on your
+          machine and the answer is thrown away.
+        </p>
+      </article>
+      <article>
+        <span class="num">02</span>
+        <h3>Each site gets a leash</h3>
+        <p>
+          Shorts and Reels get six seconds. Instagram proper gets forty-five. Ordinary
+          YouTube gets four minutes, because plenty of YouTube is work. Every rule and
+          every timer is yours to change.
+        </p>
+      </article>
+      <article>
+        <span class="num">03</span>
+        <h3>Then it comes over</h3>
+        <p>
+          The cat walks to the offending window, plants itself, and counts down. Click it
+          during the countdown and it relents. Ignore it and the paw lands — Ctrl+W for a
+          tab, a close for anything else.
+        </p>
+      </article>
+    </div>
+  </section>
+
+  <!-- ---------------- levels ---------------- -->
+  <section id="levels" class="band alt">
+    <div class="split">
+      <div>
+        <h2>It remembers what you did together</h2>
+        <p class="lede small">
+          Every window it closes earns XP, and so does patting it. Levels cost more as
+          they go, so the number means something by the time it gets high. Level-ups
+          unlock new lines and animations.
+        </p>
+        <ul class="ticks">
+          <li>25 XP per window actually closed</li>
+          <li>5 XP for a pat, rate limited so it stays honest</li>
+          <li>Progress is saved separately from your settings and survives a reset</li>
+        </ul>
+      </div>
+      <div class="levelcard">
+        <div class="lvlhead"><span>Lv. <b>5</b></span><i>42 / 135 XP</i></div>
+        <div class="lvlbar"><i style="width:31%"></i></div>
+        <div class="lvlstats">
+          <div><b>21</b><span>closed</span></div>
+          <div><b>18</b><span>pats</span></div>
+          <div><b>615</b><span>total XP</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------------- download ---------------- -->
+  <section id="download" class="band">
+    <h2>Get it</h2>
+    <p class="lede small center">
+      Windows 10 and 11. It installs to your user folder, so it needs no admin rights,
+      and it updates itself from inside the app — you will not have to come back here.
+    </p>
+
+    <div class="dl">
+      <a class="btn primary big" id="dlPrimary"
+         href="https://github.com/X-DIABLO-X/badcat/releases/latest" target="_blank" rel="noopener">
+        Download the installer
+      </a>
+      <a class="btn big" href="https://github.com/X-DIABLO-X/badcat/releases" target="_blank" rel="noopener">
+        All releases
+      </a>
+    </div>
+    <p class="fineprint center" id="dlMeta">Fetching the latest version from GitHub…</p>
+
+    <div class="note">
+      <b>Windows SmartScreen</b> will likely warn you the first time, because the installer
+      is not code-signed — a certificate costs more than this project has. Choose
+      <i>More info → Run anyway</i>, or build it yourself from source; the instructions are
+      in the repository.
+    </div>
+  </section>
+
+  <!-- ---------------- open source ---------------- -->
+  <section class="band alt">
+    <div class="oss">
+      <h2>Open source</h2>
+      <p class="lede small">
+        All of it — the Rust side, the animation rig, the release pipeline. Read it, fork
+        it, file an issue, or take the cat and put it somewhere else.
+      </p>
+      <div class="cta center">
+        <a class="btn primary" href="https://github.com/X-DIABLO-X/badcat" target="_blank" rel="noopener">
+          X-DIABLO-X/badcat
+        </a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <p>
+    <a href="https://github.com/X-DIABLO-X/badcat" target="_blank" rel="noopener">GitHub</a>
+    <span>·</span>
+    <a href="https://github.com/X-DIABLO-X/badcat/issues" target="_blank" rel="noopener">Report a bug</a>
+    <span>·</span>
+    <a href="https://github.com/X-DIABLO-X/badcat/releases" target="_blank" rel="noopener">Releases</a>
+  </p>
+  <p class="dim">badkat.cypherion.tech — built with GSAP MorphSVG and Tauri.</p>
+</footer>
+
+<script src="lib/gsap.min.js"></script>
+<script src="lib/MorphSVGPlugin.min.js"></script>
+<script src="lib/cat-rig.js"></script>
+<script src="lib/cat-shapes.js"></script>
+<script src="lib/cat.js"></script>
+<script src="site.js"></script>
+</body>
+</html>

@@ -32,6 +32,7 @@
     <button class="nav" data-panel="never">Never touch</button>
     <button class="nav" data-panel="cat">The cat</button>
     <button class="nav" data-panel="live">Live view</button>
+    <button class="nav" data-panel="about">Updates</button>
 
     <div class="side-foot">
       <span class="saved" id="savedPill" hidden>saved</span>
@@ -213,6 +214,42 @@
       </div>
 
       <div id="liveNotes"></div>
+    </section>
+
+    <!-- ---------------- updates / about ---------------- -->
+    <section class="panel" data-panel="about">
+      <header>
+        <h2>Updates</h2>
+        <p>New versions are published on GitHub and installed from here — you never have to
+           go and download anything yourself.</p>
+      </header>
+
+      <div class="card">
+        <div class="updrow">
+          <div>
+            <p class="cardhead" style="margin:0">Version</p>
+            <p class="updver" id="updCurrent">—</p>
+            <p class="updnote" id="updStatus">Checking…</p>
+          </div>
+          <div class="updactions">
+            <button class="btn ghost" id="updCheck">Check now</button>
+            <button class="btn" id="updInstall" hidden>Download &amp; install</button>
+          </div>
+        </div>
+        <div class="updtrack" id="updTrack" hidden><i id="updFill"></i></div>
+        <div class="updnotes" id="updReleaseNotes" hidden></div>
+      </div>
+
+      <div class="card">
+        <p class="cardhead">Open source</p>
+        <p class="dim" style="margin:0 0 12px;font-size:12.5px">
+          Bad Cat is open source. The code, the releases and the issue tracker all live on GitHub.
+        </p>
+        <div class="rowbtns">
+          <button class="btn ghost" id="openSite">badkat.cypherion.tech</button>
+          <button class="btn ghost" id="openRepo">GitHub repository</button>
+        </div>
+      </div>
     </section>
 
   </main>

@@ -32,6 +32,10 @@
       if (cmd === "get_config") { return cfg; }
       if (cmd === "save_config") { cfg = args.cfg; return null; }
       if (cmd === "reset_rules") { return cfg.rules; }
+      if (cmd === "check_update") {
+        return { available: true, current: "0.1.0", version: "0.2.0",
+                 notes: "Sample notes shown when running outside Tauri.", date: "", error: "" };
+      }
       if (cmd === "get_progress") {
         return { level: 4, xp: 42, needed: 105, totalXp: 615, closes: 21, pats: 18, gained: 0, awarded: 0 };
       }
@@ -389,6 +393,96 @@
 
   invoke("get_progress", {}).then(paintProgress).catch(() => {});
   if (T) { T.event.listen("progress", (e) => paintProgress(e.payload)); }
+
+  /* ---------------- updates ---------------- */
+  const upd = {
+    current: $("updCurrent"), status: $("updStatus"), check: $("updCheck"),
+    install: $("updInstall"), track: $("updTrack"), fill: $("updFill"),
+    notes: $("updReleaseNotes")
+  };
+  const SITE_URL = "https://badkat.cypherion.tech";
+  const REPO_URL = "https://github.com/X-DIABLO-X/badcat";
+
+  function setUpdStatus(text, kind) {
+    upd.status.textContent = text;
+    upd.status.className = "updnote" + (kind ? " is-" + kind : "");
+  }
+
+  async function checkForUpdate(manual) {
+    upd.check.disabled = true;
+    if (manual) { setUpdStatus("Checking…"); }
+    let info;
+    try { info = await invoke("check_update", {}); }
+    catch (err) { setUpdStatus("Could not check: " + err, "error"); upd.check.disabled = false; return; }
+    upd.check.disabled = false;
+
+    if (info.current) { upd.current.textContent = "v" + info.current; }
+
+    if (info.error) {
+      // a missing latest.json is the normal state before the first
+      // release, so say something truer than "update failed"
+      setUpdStatus("Could not reach the update server. " + info.error, "error");
+      upd.install.hidden = true;
+      return;
+    }
+    if (info.available) {
+      setUpdStatus("Version " + info.version + " is available.", "ready");
+      upd.install.hidden = false;
+      upd.install.textContent = "Update to " + info.version;
+      if (info.notes) { upd.notes.hidden = false; upd.notes.textContent = info.notes; }
+    } else {
+      setUpdStatus("You are on the latest version.", "current");
+      upd.install.hidden = true;
+      upd.notes.hidden = true;
+    }
+  }
+
+  if (upd.check) {
+    upd.check.addEventListener("click", () => checkForUpdate(true));
+
+    upd.install.addEventListener("click", async () => {
+      upd.install.disabled = true;
+      upd.check.disabled = true;
+      upd.track.hidden = false;
+      setUpdStatus("Downloading…");
+      try {
+        await invoke("install_update", {});
+        // on Windows the installer takes over and restarts the app, so
+        // reaching here at all usually means it is about to disappear
+        setUpdStatus("Installing — Bad Cat will restart.", "ready");
+      } catch (err) {
+        setUpdStatus("Update failed: " + err, "error");
+        upd.install.disabled = false;
+        upd.check.disabled = false;
+        upd.track.hidden = true;
+      }
+    });
+
+    if (T) {
+      T.event.listen("update-progress", (e) => {
+        const p = e.payload || {};
+        if (p.installing) { setUpdStatus("Installing — Bad Cat will restart.", "ready"); upd.fill.style.width = "100%"; return; }
+        if (typeof p.percent === "number" && p.total) {
+          upd.fill.style.width = Math.min(100, p.percent).toFixed(1) + "%";
+          setUpdStatus("Downloading… " + Math.round(p.percent) + "%");
+        } else if (p.downloaded) {
+          setUpdStatus("Downloading… " + (p.downloaded / 1048576).toFixed(1) + " MB");
+        }
+      });
+    }
+
+    // the backend holds the actual URLs; this only names which one
+    const openExternal = (which, fallback) => {
+      if (T) { invoke("open_link", { which }).catch(() => {}); }
+      else { window.open(fallback, "_blank"); }
+    };
+    $("openSite").addEventListener("click", () => openExternal("site", SITE_URL));
+    $("openRepo").addEventListener("click", () => openExternal("repo", REPO_URL));
+
+    // a quiet check on open, so the dashboard already knows by the time
+    // you go looking for it
+    checkForUpdate(false);
+  }
 
   /* ---------------- go ---------------- */
   invoke("get_config", {}).then((loaded) => {

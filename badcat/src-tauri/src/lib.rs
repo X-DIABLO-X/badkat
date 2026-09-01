@@ -216,6 +216,145 @@ fn status(state: tauri::State<State>) -> StatusInfo {
 }
 
 /* ------------------------------------------------------------------
+   updates
+   ------------------------------------------------------------------
+   The whole flow lives on this side rather than in the frontend. The
+   settings page is plain script tags with no bundler, so it cannot
+   import the updater's JS package; exposing two commands instead keeps
+   the dashboard doing what it already does everywhere else — invoke()
+   and listen() — and keeps the download loop where the errors are
+   actually legible.
+------------------------------------------------------------------ */
+
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct UpdateInfo {
+    available: bool,
+    current: String,
+    version: String,
+    notes: String,
+    date: String,
+    /// set when the check itself failed — offline, DNS, no release yet —
+    /// so the dashboard can say why rather than just "no updates"
+    error: String,
+}
+
+impl UpdateInfo {
+    fn none(current: &str, error: String) -> Self {
+        Self {
+            available: false,
+            current: current.into(),
+            version: String::new(),
+            notes: String::new(),
+            date: String::new(),
+            error,
+        }
+    }
+}
+
+fn current_version(app: &AppHandle) -> String {
+    app.package_info().version.to_string()
+}
+
+#[tauri::command]
+async fn check_update(app: AppHandle) -> UpdateInfo {
+    use tauri_plugin_updater::UpdaterExt;
+    let current = current_version(&app);
+
+    let updater = match app.updater() {
+        Ok(u) => u,
+        Err(e) => return UpdateInfo::none(&current, e.to_string()),
+    };
+
+    match updater.check().await {
+        Ok(Some(update)) => UpdateInfo {
+            available: true,
+            current,
+            version: update.version.clone(),
+            notes: update.body.clone().unwrap_or_default(),
+            date: update.date.map(|d| d.to_string()).unwrap_or_default(),
+            error: String::new(),
+        },
+        Ok(None) => UpdateInfo::none(&current, String::new()),
+        Err(e) => UpdateInfo::none(&current, e.to_string()),
+    }
+}
+
+/// Downloads and installs, reporting progress as it goes. On Windows
+/// the NSIS installer takes over at the end and restarts the app, so
+/// anything after `install` may never run — the caller should treat the
+/// "done" event as the last thing it will hear.
+#[tauri::command]
+async fn install_update(app: AppHandle) -> Result<(), String> {
+    use tauri_plugin_updater::UpdaterExt;
+
+    let updater = app.updater().map_err(|e| e.to_string())?;
+    let update = updater
+        .check()
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| "no update available".to_string())?;
+
+    let mut downloaded: u64 = 0;
+    let emitter = app.clone();
+    let progress = app.clone();
+
+    update
+        .download_and_install(
+            move |chunk, total| {
+                downloaded += chunk as u64;
+                let pct = total
+                    .map(|t| if t > 0 { (downloaded as f64 / t as f64) * 100.0 } else { 0.0 })
+                    .unwrap_or(0.0);
+                let _ = progress.emit(
+                    "update-progress",
+                    serde_json::json!({
+                        "downloaded": downloaded,
+                        "total": total,
+                        "percent": pct
+                    }),
+                );
+            },
+            move || {
+                let _ = emitter.emit("update-progress", serde_json::json!({ "installing": true }));
+            },
+        )
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+pub const SITE_URL: &str = "https://badkat.cypherion.tech";
+pub const REPO_URL: &str = "https://github.com/X-DIABLO-X/badcat";
+
+/// Opens one of the project's own links in the default browser.
+///
+/// Takes a KEY, not a URL. A command that opened whatever string the
+/// frontend handed it would be a way to launch arbitrary things through
+/// the shell; there are exactly two links worth opening, so they are
+/// named here and the frontend can only pick between them.
+#[tauri::command]
+fn open_link(which: String) {
+    let url = match which.as_str() {
+        "site" => SITE_URL,
+        "repo" => REPO_URL,
+        _ => return,
+    };
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        // ShellExecute via rundll32 rather than `cmd /C start`: no shell
+        // parsing involved, so the argument cannot be read as a command
+        let _ = std::process::Command::new("rundll32.exe")
+            .args(["url.dll,FileProtocolHandler", url])
+            .creation_flags(CREATE_NO_WINDOW)
+            .spawn();
+    }
+}
+
+/* ------------------------------------------------------------------
    affection
 ------------------------------------------------------------------ */
 
@@ -775,6 +914,7 @@ fn build_tray(app: &AppHandle, state: State) -> tauri::Result<()> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
             let handle = app.handle().clone();
 
@@ -846,6 +986,9 @@ pub fn run() {
             preview_state,
             get_progress,
             award_pat,
+            check_update,
+            install_update,
+            open_link,
             jslog
         ])
         .build(tauri::generate_context!())

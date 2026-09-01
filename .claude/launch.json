@@ -6,6 +6,12 @@
       "runtimeExecutable": "python",
       "runtimeArgs": ["serve.py", "5178"],
       "port": 5178
+    },
+    {
+      "name": "site",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["../serve.py", "5179"],
+      "port": 5179
     }
   ]
 }

@@ -1,0 +1,111 @@
+/* ------------------------------------------------------------------
+   cat.css — the character's own paint
+   ------------------------------------------------------------------
+   Shared by the demo page and the desktop overlay so the cat looks
+   identical in both. Page chrome lives in style.css / pet.css.
+------------------------------------------------------------------ */
+:root {
+  --fur:       #ece7da;
+  --fur-shade: #d3ccb9;
+  --ink:       #171b22;
+  --ear:       #c2907f;
+  --heart:     #e07a8c;
+  --anger:     #e2584f;
+  --paw:       #f6f1e4;
+  --lvl-pill:  #24272d;
+  --lvl-ink:   #ffffff;
+  --lvl-green: #5fd97a;
+}
+
+.fur   { fill: var(--fur); }
+.eye   { fill: var(--ink); }
+.ear-inner { fill: var(--ear); opacity: .28; }
+
+.leg {
+  fill: none;
+  stroke: var(--fur);
+  stroke-width: 12.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.leg--far { stroke: var(--fur-shade); }
+
+.tail {
+  fill: none;
+  stroke: var(--fur);
+  stroke-width: 9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.mouth {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+#shadow { fill: #000; opacity: .32; }
+
+.anger-mark {
+  fill: var(--anger);
+  stroke: var(--ink);
+  stroke-width: 1.2;
+  stroke-linejoin: round;
+}
+#anger { opacity: 0; }
+
+/* Light fill so the print still reads against a dark window, with a
+   thin dark edge so it does not vanish against a pale one either. */
+.pawprint {
+  fill: var(--paw);
+  stroke: var(--ink);
+  stroke-width: 1.1;
+  stroke-linejoin: round;
+  opacity: 0;
+}
+
+.heart { fill: var(--heart); opacity: 0; }
+
+/* level-up: a dark pill naming the new level, with green sparkles and
+   a few rising streaks around it. Dark-on-light either way round — the
+   pill carries its own background, so it stays readable whatever the
+   desktop behind the overlay happens to be. */
+.lvl-pill { fill: var(--lvl-pill); }
+.lvl-text {
+  fill: var(--lvl-ink);
+  font-family: ui-sans-serif, "Segoe UI", system-ui, sans-serif;
+  font-size: 8.6px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  dominant-baseline: central;
+  text-anchor: middle;
+}
+.lvl-arrow { fill: var(--lvl-green); }
+.lvl-spark { fill: var(--lvl-green); }
+.lvl-dot   { fill: var(--lvl-green); }
+.streak    { fill: var(--lvl-green); opacity: .22; }
+#levelup { opacity: 0; }
+
+.xp-float {
+  fill: var(--lvl-green);
+  font-family: ui-sans-serif, "Segoe UI", system-ui, sans-serif;
+  font-size: 8.2px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  dominant-baseline: central;
+  text-anchor: middle;
+  paint-order: stroke;          /* the halo sits behind the glyph, not over it */
+  stroke: rgba(16, 20, 26, .55);
+  stroke-width: 2.2;
+  opacity: 0;
+}
+
+.z {
+  fill: var(--fur);
+  font-family: "DM Mono", ui-monospace, monospace;
+  font-size: 13px;
+  opacity: 0;
+}
+

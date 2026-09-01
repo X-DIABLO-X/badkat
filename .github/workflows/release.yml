@@ -1,0 +1,56 @@
+name: Release
+
+# Tag a version and this builds the installer, signs it, and publishes
+# the release together with the latest.json the in-app updater reads.
+#
+# Needs one repository secret before the first run:
+#   TAURI_SIGNING_PRIVATE_KEY  — contents of the updater private key
+# (and TAURI_SIGNING_PRIVATE_KEY_PASSWORD if the key was given one).
+# The matching PUBLIC key is already committed in tauri.conf.json; an
+# update signed with a different key will be refused by the installed
+# app, which is the whole point of signing it.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: badcat/src-tauri
+
+      - name: Install dependencies
+        working-directory: badcat
+        run: npm ci
+
+      - name: Build, sign and publish
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: badcat
+          tagName: ${{ github.ref_name }}
+          releaseName: "Bad Cat ${{ github.ref_name }}"
+          releaseBody: "See the assets below to download and install."
+          releaseDraft: false
+          prerelease: false
+          # the updater fetches this by a fixed name from /latest/download
+          includeUpdaterJson: true
+          updaterJsonPreferNsis: true

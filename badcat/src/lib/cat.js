@@ -554,12 +554,17 @@
     // counter-flip, or the text comes out backwards facing left
     gsap.set(el.xpFloat, { x: x, y: y, scaleX: dir, transformOrigin: "50% 50%" });
 
+    /* Long and slow on purpose. This is the receipt for something you
+       did, so it has to outlast a glance away from the screen: it pops,
+       then drifts for the better part of three seconds before fading.
+       Like the badge, it is not scaled by the animation-speed setting —
+       reading time should not depend on how fast the cat walks. */
     var tl = gsap.timeline();
     tl.fromTo(el.xpFloat,
       { y: y + 4, scaleY: 0.7, opacity: 0 },
-      { y: y - 2, scaleY: 1, opacity: 1, duration: 0.26, ease: "back.out(2.6)" }, 0);
-    tl.to(el.xpFloat, { y: y - 20, duration: 1.5, ease: "power1.out" }, 0.26);
-    tl.to(el.xpFloat, { opacity: 0, duration: 0.5, ease: "power2.in" }, 1.3);
+      { y: y - 2, scaleY: 1, opacity: 1, duration: 0.3, ease: "back.out(2.6)" }, 0);
+    tl.to(el.xpFloat, { y: y - 26, duration: 3.0, ease: "power1.out" }, 0.3);
+    tl.to(el.xpFloat, { opacity: 0, duration: 0.85, ease: "power2.in" }, 2.55);
     return tl;
   }
 

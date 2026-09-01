@@ -11,9 +11,15 @@ import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = join(here, "..", "..");
-const lib = join(here, "..", "src", "lib");
 
-mkdirSync(lib, { recursive: true });
+/* Two destinations, not one: the landing page runs the same live rig as
+ * the app, so it needs the same files. Copying both from here means the
+ * cat on the website cannot quietly fall a version behind the cat in
+ * the product. */
+const targets = [
+  { dir: join(here, "..", "src", "lib"), label: "badcat/src/lib" },
+  { dir: join(repo, "site", "lib"), label: "site/lib" }
+];
 
 const files = [
   ["js/cat-rig.js", "cat-rig.js"],
@@ -24,8 +30,11 @@ const files = [
   ["desktop/vendor/MorphSVGPlugin.min.js", "MorphSVGPlugin.min.js"]
 ];
 
-for (const [from, to] of files) {
-  copyFileSync(join(repo, from), join(lib, to));
-  console.log("  " + from + " -> src/lib/" + to);
+for (const { dir, label } of targets) {
+  mkdirSync(dir, { recursive: true });
+  for (const [from, to] of files) {
+    copyFileSync(join(repo, from), join(dir, to));
+    console.log("  " + from + " -> " + label + "/" + to);
+  }
 }
 console.log("rig synced");

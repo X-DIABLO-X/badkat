@@ -83,6 +83,30 @@ html, body {
 }
 .levelcard.is-up { animation: lvlpop .8s ease-out; border-color: var(--gold); }
 
+/* ---------- updates ---------- */
+.updrow { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; flex-wrap: wrap; }
+.updver { margin: 4px 0 2px; font-size: 20px; letter-spacing: -0.02em; }
+.updnote { margin: 0; font-size: 12.5px; color: var(--muted); }
+.updnote.is-ready { color: var(--gold); }
+.updnote.is-current { color: var(--ok); }
+.updnote.is-error { color: var(--warn); }
+.updactions { display: flex; gap: 8px; align-items: center; }
+.updtrack {
+  margin-top: 14px; height: 6px; border-radius: 4px;
+  background: #0d1219; overflow: hidden;
+}
+.updtrack i {
+  display: block; height: 100%; width: 0%; border-radius: 4px;
+  background: linear-gradient(90deg, var(--gold), #f6d98a);
+  transition: width .25s linear;
+}
+.updnotes {
+  margin-top: 14px; padding: 12px 14px;
+  background: #0d1219; border: 1px solid var(--line); border-radius: 9px;
+  font-size: 12.5px; color: var(--muted); white-space: pre-wrap;
+  max-height: 220px; overflow-y: auto;
+}
+
 /* ---------- stats ---------- */
 .statrow { display: flex; flex-wrap: wrap; gap: 10px; }
 .stat {
