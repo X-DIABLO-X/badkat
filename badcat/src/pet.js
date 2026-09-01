@@ -42,9 +42,14 @@
   let sleepy = true;
   let baseSpeed = 1;
 
+  window.addEventListener("unhandledrejection", (e) => log("UNHANDLED REJECTION: " + e.reason));
+
   gsap.registerPlugin(MorphSVGPlugin);
+  log(">>> mounting rig to #petScene...");
   CatRig.mount(document.getElementById("petScene"));
+  log(">>> rig mounted. Calling Cat.init()...");
   Cat.init({ state: "sit", roam: false });   // we drive position ourselves
+  log(">>> Cat.init() completed successfully!");
 
   /* ---------------------------------------------------------------
      position — both axes live in #pet's own x/y (GSAP transform),
@@ -571,7 +576,9 @@
   /* ---------------------------------------------------------------
      go
   --------------------------------------------------------------- */
+  log(">>> window size: " + window.innerWidth + "x" + window.innerHeight + ", placing cat at y=" + floorY());
   setXY(Math.round((window.innerWidth - boxW) / 2), floorY());
+  log(">>> setXY placed cat at x=" + Math.round((window.innerWidth - boxW) / 2) + ", y=" + floorY());
 
   invoke("get_config", {})
     .then((cfg) => {

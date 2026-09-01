@@ -378,6 +378,10 @@ fn build_overlay(app: &AppHandle) -> tauri::Result<()> {
     make_non_activating(&window);
 
     window.show()?;
+    let is_vis = window.is_visible().unwrap_or(false);
+    let size = window.inner_size().unwrap_or_default();
+    let pos = window.outer_position().unwrap_or_default();
+    eprintln!("[badcat] overlay window shown! is_visible={is_vis}, size={:?}, pos={:?}", size, pos);
     Ok(())
 }
 
@@ -421,10 +425,14 @@ fn spawn_cursor_tracker(app: AppHandle, hit_box: Arc<HitBox>) {
                     use windows::Win32::UI::WindowsAndMessaging::GetCursorPos;
                     let mut pt = POINT::default();
                     if unsafe { GetCursorPos(&mut pt) }.is_ok() {
-                        let l = hit_box.left.load(Ordering::Relaxed);
-                        let t = hit_box.top.load(Ordering::Relaxed);
-                        let r = hit_box.right.load(Ordering::Relaxed);
-                        let b = hit_box.bottom.load(Ordering::Relaxed);
+                        let scale = app
+                            .get_webview_window("pet")
+                            .and_then(|w| w.scale_factor().ok())
+                            .unwrap_or(1.0);
+                        let l = (hit_box.left.load(Ordering::Relaxed) as f64 * scale) as i32;
+                        let t = (hit_box.top.load(Ordering::Relaxed) as f64 * scale) as i32;
+                        let r = (hit_box.right.load(Ordering::Relaxed) as f64 * scale) as i32;
+                        let b = (hit_box.bottom.load(Ordering::Relaxed) as f64 * scale) as i32;
                         pt.x >= l && pt.x <= r && pt.y >= t && pt.y <= b
                     } else {
                         false
@@ -672,7 +680,7 @@ pub fn run() {
                 .unwrap_or_else(|_| PathBuf::from("."));
             // check before loading: load() writes the defaults out on
             // first run, so asking afterwards always says "not first run"
-            let first_run = !config::config_path(&dir).exists();
+            let _first_run = !config::config_path(&dir).exists();
             let (cfg, notes) = config::load(&dir);
             #[cfg(debug_assertions)]
             eprintln!(
@@ -717,10 +725,8 @@ pub fn run() {
             spawn_monitor(handle.clone(), state);
             eprintln!("[badcat] monitor spawned ok!");
 
-            // first run has nothing configured yet; --settings forces it
-            if first_run || std::env::args().any(|a| a == "--settings") {
-                show_settings(&handle);
-            }
+            // Show settings window on launch for immediate UI feedback and controls
+            show_settings(&handle);
 
             eprintln!("[badcat] setup completed successfully!");
             Ok(())
