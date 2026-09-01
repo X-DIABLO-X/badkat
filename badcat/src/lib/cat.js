@@ -54,6 +54,7 @@
       lvlPill: $("lvlPill"),
       lvlText: $("lvlText"),
       lvlArrow: $("lvlArrow"),
+      xpFloat: $("xpFloat"),
       hearts: $("hearts"),
       legs: { fn: $("legFN"), ff: $("legFF"), bn: $("legBN"), bf: $("legBF") }
     };
@@ -147,10 +148,10 @@
     gsap.killTweensOf(heartEls);
     gsap.killTweensOf(angerEls);
     gsap.killTweensOf(zzzEls);
-    // the burst borrows bodyGroup/headBob, so a pose change has to take
-    // them back — otherwise a stray gold ring is left sitting on screen
+    // the celebration borrows bodyGroup/headBob, so a pose change has to
+    // take them back — otherwise a stray badge is left sitting on screen
     gsap.killTweensOf(sparkEls.concat(dotEls, streakEls));
-    gsap.killTweensOf([el.levelup, el.lvlBadge]);
+    gsap.killTweensOf([el.levelup, el.lvlBadge, el.xpFloat]);
     LEG_KEYS.forEach(function (k) { gsap.killTweensOf(el.legs[k]); });
   }
 
@@ -537,6 +538,31 @@
     });
   }
 
+  /* "+25 XP" drifting up off the cat's shoulder. Most XP never levels
+     anything, so this is the ordinary feedback and levelUp() is the
+     rare one — they are placed apart (shoulder vs. well above the head)
+     so that on the award that does both, neither sits on the other. */
+  function gainXp(amount) {
+    if (!el.xpFloat || !amount) { return gsap.timeline(); }
+    var pose = S.POSES[current] || S.POSES.sit;
+    var dir = facingSign();
+    var x = pose.headPos.x + 24;
+    var y = pose.headPos.y - 16;
+
+    gsap.killTweensOf(el.xpFloat);
+    el.xpFloat.textContent = "+" + amount + " XP";
+    // counter-flip, or the text comes out backwards facing left
+    gsap.set(el.xpFloat, { x: x, y: y, scaleX: dir, transformOrigin: "50% 50%" });
+
+    var tl = gsap.timeline();
+    tl.fromTo(el.xpFloat,
+      { y: y + 4, scaleY: 0.7, opacity: 0 },
+      { y: y - 2, scaleY: 1, opacity: 1, duration: 0.26, ease: "back.out(2.6)" }, 0);
+    tl.to(el.xpFloat, { y: y - 20, duration: 1.5, ease: "power1.out" }, 0.26);
+    tl.to(el.xpFloat, { opacity: 0, duration: 0.5, ease: "power2.in" }, 1.3);
+    return tl;
+  }
+
   function levelUp(level) {
     if (!el.levelup) { return gsap.timeline(); }
     var pose = S.POSES[current] || S.POSES.sit;
@@ -573,31 +599,46 @@
         }, cfg.d);
     });
 
-    // the badge: overshoots up, settles, holds, then drifts away
+    /* The badge comes in fast and then STAYS, because it is the one
+       thing here carrying information: a pop that is gone in under two
+       seconds reads as a glitch rather than as news. It holds on a slow
+       breath so the hold is alive rather than frozen, and only leaves
+       at HOLD_OUT. */
+    var HOLD_OUT = 4.1;
     tl.fromTo(el.lvlBadge,
       { y: 7, scale: 0.55, opacity: 0, transformOrigin: "50% 50%" },
-      { y: 0, scale: 1, opacity: 1, duration: 0.34, ease: "back.out(2.4)" }, 0.05);
-    tl.to(el.lvlBadge, { y: -7, opacity: 0, duration: 0.42, ease: "power2.in" }, 1.5);
+      { y: 0, scale: 1, opacity: 1, duration: 0.38, ease: "back.out(2.4)" }, 0.05);
+    tl.to(el.lvlBadge, {
+      y: -1.6, duration: 1.15, ease: "sine.inOut", yoyo: true, repeat: 2
+    }, 0.5);
+    tl.to(el.lvlBadge, {
+      y: -9, scale: 0.94, opacity: 0, duration: 0.5, ease: "power2.in"
+    }, HOLD_OUT);
 
-    // sparkles twinkle in around it, each on its own beat
-    sparkEls.forEach(function (s, i) {
-      var cfg = LVL_SPARKS[i % LVL_SPARKS.length];
-      tl.fromTo(s,
-        { x: cfg.x, y: cfg.y + 3, scale: 0, rotation: -35, opacity: 0, transformOrigin: "50% 50%" },
-        {
-          y: cfg.y, scale: cfg.s, rotation: 0, duration: 0.9, ease: "power2.out",
-          keyframes: { opacity: [0, 1, 1, 0] }
-        }, 0.16 + i * 0.09);
-    });
+    /* Two waves of sparkles rather than one longer set: a single wave
+       fades out and leaves the badge sitting alone for the rest of the
+       hold, where a second wave keeps the moment going the whole way. */
+    [0, 1].forEach(function (wave) {
+      var at = 0.16 + wave * 1.75;
+      sparkEls.forEach(function (s, i) {
+        var cfg = LVL_SPARKS[(i + wave) % LVL_SPARKS.length];
+        tl.fromTo(s,
+          { x: cfg.x, y: cfg.y + 3, scale: 0, rotation: -35, opacity: 0, transformOrigin: "50% 50%" },
+          {
+            y: cfg.y, scale: cfg.s, rotation: 0, duration: 1.35, ease: "power2.out",
+            keyframes: { opacity: [0, 1, 1, 0] }
+          }, at + i * 0.11);
+      });
 
-    dotEls.forEach(function (d, i) {
-      var cfg = LVL_DOTS[i % LVL_DOTS.length];
-      tl.fromTo(d,
-        { x: cfg.x, y: cfg.y + 4, scale: 0, opacity: 0, transformOrigin: "50% 50%" },
-        {
-          y: cfg.y - 2, scale: cfg.s, duration: 1.0, ease: "power2.out",
-          keyframes: { opacity: [0, 0.95, 0.95, 0] }
-        }, 0.22 + i * 0.08);
+      dotEls.forEach(function (d, i) {
+        var cfg = LVL_DOTS[(i + wave) % LVL_DOTS.length];
+        tl.fromTo(d,
+          { x: cfg.x, y: cfg.y + 4, scale: 0, opacity: 0, transformOrigin: "50% 50%" },
+          {
+            y: cfg.y - 2, scale: cfg.s, duration: 1.45, ease: "power2.out",
+            keyframes: { opacity: [0, 0.95, 0.95, 0] }
+          }, at + 0.06 + i * 0.1);
+      });
     });
 
     // and the cat itself pops — the badge alone reads as a screen
@@ -616,7 +657,10 @@
       y: 0, rotation: 0, duration: 0.72, ease: "elastic.out(1, 0.5)"
     }, 0.22);
 
-    tl.timeScale(speed || 1);
+    /* Deliberately NOT scaled by `speed`. That setting is about how the
+       cat moves; the badge is a notice, and at 2x it would be on screen
+       for barely two seconds — which is the thing this hold exists to
+       fix. Reading time should not depend on the animation slider. */
     return tl;
   }
 
@@ -772,6 +816,7 @@
     gsap.set(el.anger, { opacity: 0 });
     gsap.set(el.pawprint, { opacity: 0 });
     gsap.set(el.levelup, { opacity: 0 });
+    gsap.set(el.xpFloat, { opacity: 0 });
     gsap.set(heartEls, { opacity: 0 });
 
     var mine = ++generation;
@@ -853,6 +898,7 @@
     gsap.set(el.pawprint, { opacity: 0 });
     sparkEls.forEach(function (s) { s.setAttribute("d", S.SPARK); });
     gsap.set(el.levelup, { opacity: 0 });
+    gsap.set(el.xpFloat, { opacity: 0 });
     gsap.set(sparkEls.concat(dotEls, streakEls), { opacity: 0 });
     heartEls.forEach(function (h) { h.setAttribute("d", S.HEART); });
     gsap.set(heartEls, { opacity: 0 });
@@ -872,6 +918,9 @@
        instead of replacing it, so it never disturbs the state machine.
        Returns the timeline. */
     levelUp: levelUp,
+    /* "+N XP" floating off the cat. Independent of levelUp() — most
+       awards never level anything. Returns the timeline. */
+    gainXp: gainXp,
     /* Design units per second the paws are currently covering. The
        desktop overlay multiplies this by its px-per-unit scale to move
        the cat across the screen without the feet skating. */

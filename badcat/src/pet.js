@@ -515,9 +515,18 @@
      so a level earned mid-walk doesn't stop it walking. */
   listen("progress", (e) => {
     const p = e.payload;
-    if (!p || !p.gained) { return; }
-    // the badge names the level itself, so no bubble on top of it
-    try { Cat.levelUp(p.level); } catch (err) { log("levelUp failed: " + err); }
+    if (!p) { return; }
+    try {
+      // the "+N XP" plays on every award; the badge only when one levelled.
+      // On the award that does both, the XP reads first and the badge
+      // lands under it a beat later, so they arrive as cause then effect
+      // rather than both at once.
+      if (p.awarded) { Cat.gainXp(p.awarded); }
+      if (p.gained) {
+        // the badge names the level itself, so no bubble on top of it
+        gsap.delayedCall(p.awarded ? 0.45 : 0, () => Cat.levelUp(p.level));
+      }
+    } catch (err) { log("progress animation failed: " + err); }
   });
 
   // settings can drive the cat directly so you can see each pose

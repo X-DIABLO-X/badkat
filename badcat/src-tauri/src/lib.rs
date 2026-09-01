@@ -116,7 +116,8 @@ struct StatusPayload {
 /// derived rather than stored, so the level curve can be retuned without
 /// migrating anyone's saved progress. `gained` is non-zero only on the
 /// award that crossed a threshold — that is the pet window's cue to play
-/// the level-up animation.
+/// the level-up animation — and `awarded` is what this particular event
+/// paid out, which is what the floating "+25 XP" reads.
 #[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 struct ProgressView {
@@ -127,10 +128,11 @@ struct ProgressView {
     closes: u32,
     pats: u32,
     gained: u32,
+    awarded: u32,
 }
 
 impl ProgressView {
-    fn of(p: &Progress, gained: u32) -> Self {
+    fn of(p: &Progress, gained: u32, awarded: u32) -> Self {
         Self {
             level: p.level,
             xp: p.xp,
@@ -139,6 +141,7 @@ impl ProgressView {
             closes: p.closes,
             pats: p.pats,
             gained,
+            awarded,
         }
     }
 }
@@ -237,14 +240,14 @@ fn bank_xp(app: &AppHandle, state: &State, amount: u32, kind: &str) -> ProgressV
     };
 
     let _ = progress::save(&dir, &snap);
-    let view = ProgressView::of(&snap, gained);
+    let view = ProgressView::of(&snap, gained, amount);
     let _ = app.emit("progress", view.clone());
     view
 }
 
 #[tauri::command]
 fn get_progress(state: tauri::State<State>) -> ProgressView {
-    ProgressView::of(&state.lock().unwrap().progress, 0)
+    ProgressView::of(&state.lock().unwrap().progress, 0, 0)
 }
 
 /// A pat from the overlay. Rate-limited here rather than in the
@@ -256,7 +259,7 @@ fn award_pat(app: AppHandle, state: tauri::State<State>) -> ProgressView {
         let now = Instant::now();
         if let Some(last) = guard.last_pat {
             if now.duration_since(last) < PAT_COOLDOWN {
-                return ProgressView::of(&guard.progress, 0);
+                return ProgressView::of(&guard.progress, 0, 0);
             }
         }
         guard.last_pat = Some(now);

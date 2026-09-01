@@ -33,7 +33,7 @@
       if (cmd === "save_config") { cfg = args.cfg; return null; }
       if (cmd === "reset_rules") { return cfg.rules; }
       if (cmd === "get_progress") {
-        return { level: 4, xp: 42, needed: 105, totalXp: 615, closes: 21, pats: 18, gained: 0 };
+        return { level: 4, xp: 42, needed: 105, totalXp: 615, closes: 21, pats: 18, gained: 0, awarded: 0 };
       }
       if (cmd === "status") {
         return {

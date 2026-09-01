@@ -88,6 +88,20 @@
 .streak    { fill: var(--lvl-green); opacity: .22; }
 #levelup { opacity: 0; }
 
+.xp-float {
+  fill: var(--lvl-green);
+  font-family: ui-sans-serif, "Segoe UI", system-ui, sans-serif;
+  font-size: 8.2px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  dominant-baseline: central;
+  text-anchor: middle;
+  paint-order: stroke;          /* the halo sits behind the glyph, not over it */
+  stroke: rgba(16, 20, 26, .55);
+  stroke-width: 2.2;
+  opacity: 0;
+}
+
 .z {
   fill: var(--fur);
   font-family: "DM Mono", ui-monospace, monospace;

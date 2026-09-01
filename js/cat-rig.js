@@ -77,6 +77,11 @@
     '  </g>',
     '</g>',
 
+    // "+25 XP", floating up off the cat every time XP lands. Its own
+    // element rather than part of #levelup: most XP never levels
+    // anything, so this has to be able to play entirely on its own.
+    '<text id="xpFloat" class="xp-float" x="0" y="0" aria-hidden="true">+0 XP</text>',
+
     '<g id="hearts" aria-hidden="true">',
     '  <path class="heart" d="M0,0" /><path class="heart" d="M0,0" /><path class="heart" d="M0,0" />',
     '</g>',
