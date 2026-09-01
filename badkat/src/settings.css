@@ -30,6 +30,26 @@ html, body {
   overflow: hidden;
 }
 
+/* ---------- scrollbars ----------
+   The webview's default scrollbar is a chunky opaque slab that fights
+   the dark chrome. Slim it down, drop the track, and tint the thumb to
+   the panel lines so it reads as part of the surface, not on top of it. */
+* {
+  scrollbar-width: thin;                       /* Firefox / WebKitGTK */
+  scrollbar-color: var(--line-2) transparent;
+}
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-corner { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--line-2);
+  border: 3px solid transparent;               /* inset the thumb, so it looks ~4px wide */
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover { background: #3a4560; }
+::-webkit-scrollbar-thumb:active { background: var(--muted); }
+
 .shell { display: flex; height: 100%; }
 
 /* ---------- sidebar ---------- */
