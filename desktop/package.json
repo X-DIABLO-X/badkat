@@ -1,0 +1,14 @@
+{
+  "name": "morphcat-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A desktop cat that patrols your screen and closes doomscroll content.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev"
+  },
+  "devDependencies": {
+    "electron": "^44.1.0"
+  }
+}

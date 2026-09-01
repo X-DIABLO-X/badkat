@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;" />
+<title>morphcat</title>
+<link rel="stylesheet" href="../css/cat.css" />
+<link rel="stylesheet" href="pet.css" />
+</head>
+<body>
+  <!-- the whole page is click-through except .hot regions -->
+  <div id="pet">
+    <div id="bubble" class="bubble" hidden>
+      <span id="bubbleText"></span>
+      <span id="bubbleCount" class="count"></span>
+    </div>
+    <svg id="petScene" viewBox="0 0 200 150" aria-hidden="true"></svg>
+  </div>
+
+  <script src="vendor/gsap.min.js"></script>
+  <script src="vendor/MorphSVGPlugin.min.js"></script>
+  <script src="../js/cat-rig.js"></script>
+  <script src="../js/cat-shapes.js"></script>
+  <script src="../js/cat.js"></script>
+  <script src="pet.js"></script>
+</body>
+</html>

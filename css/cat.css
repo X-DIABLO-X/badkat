@@ -1,0 +1,64 @@
+/* ------------------------------------------------------------------
+   cat.css — the character's own paint
+   ------------------------------------------------------------------
+   Shared by the demo page and the desktop overlay so the cat looks
+   identical in both. Page chrome lives in style.css / pet.css.
+------------------------------------------------------------------ */
+:root {
+  --fur:       #ece7da;
+  --fur-shade: #d3ccb9;
+  --ink:       #171b22;
+  --ear:       #c2907f;
+  --heart:     #e07a8c;
+  --anger:     #e2584f;
+}
+
+.fur   { fill: var(--fur); }
+.eye   { fill: var(--ink); }
+.ear-inner { fill: var(--ear); opacity: .28; }
+
+.leg {
+  fill: none;
+  stroke: var(--fur);
+  stroke-width: 12.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.leg--far { stroke: var(--fur-shade); }
+
+.tail {
+  fill: none;
+  stroke: var(--fur);
+  stroke-width: 9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.mouth {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+#shadow { fill: #000; opacity: .32; }
+
+.anger-mark {
+  fill: none;
+  stroke: var(--anger);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: miter;
+}
+#anger { opacity: 0; }
+
+.heart { fill: var(--heart); opacity: 0; }
+
+.z {
+  fill: var(--fur);
+  font-family: "DM Mono", ui-monospace, monospace;
+  font-size: 13px;
+  opacity: 0;
+}
+

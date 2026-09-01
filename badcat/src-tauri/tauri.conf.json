@@ -1,0 +1,27 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Bad Cat",
+  "version": "0.1.0",
+  "identifier": "app.badcat.desktop",
+  "build": {
+    "frontendDist": "../src"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/icon.ico"
+    ],
+    "shortDescription": "A desktop cat that closes your doomscrolling.",
+    "longDescription": "Bad Cat patrols the bottom of your screen. When Shorts, Reels, TikTok or a streaming site holds the foreground for too long, it storms over and closes it."
+  }
+}

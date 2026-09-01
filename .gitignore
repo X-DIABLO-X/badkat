@@ -1,0 +1,12 @@
+node_modules/
+target/
+**/target/
+.shot-*.png
+.shot-*.json
+*.log
+.badcat*.log
+.morphcat*.log
+cargotest/
+.DS_Store
+Thumbs.db
+

@@ -1,0 +1,11 @@
+Backup of cat animation files, taken 2026-09-01 before adding the paw-swipe close animation.
+
+Restore any file by copying it back to its original path:
+  js/*                -> D:/HARSHIT/badkat/js/
+  css/cat.css         -> D:/HARSHIT/badkat/css/
+  badcat-src/lib/*    -> D:/HARSHIT/badkat/badcat/src/lib/
+  badcat-src/pet.js   -> D:/HARSHIT/badkat/badcat/src/pet.js
+  badcat-src/pet.css  -> D:/HARSHIT/badkat/badcat/src/pet.css
+  desktop/*           -> D:/HARSHIT/badkat/desktop/
+
+Or: cd badcat && npm run sync   (re-copies js/ and css/ into badcat/src/lib/)

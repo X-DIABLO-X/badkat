@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Bad Cat — Settings</title>
+<link rel="stylesheet" href="lib/cat.css" />
+<link rel="stylesheet" href="settings.css" />
+</head>
+<body>
+<div class="shell">
+
+  <nav class="side">
+    <div class="brand">
+      <svg viewBox="0 0 200 150" class="brandcat" aria-hidden="true"><g id="brandMount"></g></svg>
+      <div>
+        <h1>Bad Cat</h1>
+        <p id="brandState">on patrol</p>
+      </div>
+    </div>
+
+    <button class="nav" data-panel="patrol" aria-current="true">Patrol</button>
+    <button class="nav" data-panel="rules">What counts</button>
+    <button class="nav" data-panel="never">Never touch</button>
+    <button class="nav" data-panel="cat">The cat</button>
+    <button class="nav" data-panel="live">Live view</button>
+
+    <div class="side-foot">
+      <span class="saved" id="savedPill" hidden>saved</span>
+    </div>
+  </nav>
+
+  <main class="panels">
+
+    <!-- ---------------- patrol ---------------- -->
+    <section class="panel is-on" data-panel="patrol">
+      <header><h2>Patrol</h2><p>When the cat gets up, and what it does when it arrives.</p></header>
+
+      <div class="card">
+        <label class="row switch">
+          <input type="checkbox" id="enabled" />
+          <span class="lbl"><b>On patrol</b><i>Turn the whole thing off without quitting.</i></span>
+        </label>
+      </div>
+
+      <div class="card">
+        <p class="cardhead">When it catches you</p>
+        <label class="row radio">
+          <input type="radio" name="mode" value="close" id="modeClose" />
+          <span class="lbl"><b>Close it</b><i>A browser tab gets Ctrl+W. Anything else gets a window close.</i></span>
+        </label>
+        <label class="row radio">
+          <input type="radio" name="mode" value="nag" id="modeNag" />
+          <span class="lbl"><b>Only complain</b><i>The cat storms over and glares, but never acts. Use this while you tune the rules.</i></span>
+        </label>
+      </div>
+
+      <div class="card grid2">
+        <label class="field">
+          <span>Countdown before it acts</span>
+          <div class="withunit"><input type="number" id="countdown" min="0" max="30" /> <i>seconds</i></div>
+          <em>Click the cat during the countdown to snooze instead. Set 0 to act instantly.</em>
+        </label>
+        <label class="field">
+          <span>Snooze length</span>
+          <div class="withunit"><input type="number" id="snoozeMinutes" min="1" max="240" /> <i>minutes</i></div>
+          <em>Used by the tray menu and by clicking the cat mid-countdown.</em>
+        </label>
+        <label class="field">
+          <span>Check the foreground every</span>
+          <div class="withunit"><input type="number" id="pollMs" min="250" max="10000" step="250" /> <i>ms</i></div>
+        </label>
+        <label class="field">
+          <span>Re-read the address bar every</span>
+          <div class="withunit"><input type="number" id="urlPollMs" min="500" max="10000" step="500" /> <i>ms</i></div>
+          <em>The costliest part of the watch, about 100ms per read.</em>
+        </label>
+      </div>
+    </section>
+
+    <!-- ---------------- rules ---------------- -->
+    <section class="panel" data-panel="rules">
+      <header>
+        <h2>What counts</h2>
+        <p>Each rule is matched against the <b>URL</b>, the window <b>title</b> and the <b>process name</b> of
+           whatever is in front of you. First match wins, so put specific rules above general ones.</p>
+      </header>
+
+      <div class="note">
+        A browser only ever exposes the site's own title, so Instagram Reels reads as just
+        “Instagram” and a YouTube Short as “&lt;name&gt; - YouTube”. The word <b>reels</b> or
+        <b>shorts</b> exists only in the URL. But a browser playing fullscreen video drops its
+        address bar entirely, so the URL goes blank exactly while you watch a film. That is why
+        both are matched, and why some rules use a domain and others a title fragment.
+      </div>
+
+      <div class="rules-head">
+        <span></span><span>Name</span><span>Any of these</span><span>And all of these</span>
+        <span>Grace</span><span>Action</span><span></span>
+      </div>
+      <div id="ruleRows"></div>
+
+      <div class="rowbtns">
+        <button class="btn" id="addRule">Add a rule</button>
+        <button class="btn ghost" id="resetRules">Restore defaults</button>
+      </div>
+    </section>
+
+    <!-- ---------------- never ---------------- -->
+    <section class="panel" data-panel="never">
+      <header>
+        <h2>Never touch</h2>
+        <p>A window whose URL, title or process contains any of these is left alone, whatever else it matches.
+           One per line. This is the escape hatch for false positives.</p>
+      </header>
+      <div class="card">
+        <textarea id="neverList" rows="10" spellcheck="false"
+                  placeholder="zoom meeting&#10;microsoft teams&#10;google meet"></textarea>
+      </div>
+    </section>
+
+    <!-- ---------------- cat ---------------- -->
+    <section class="panel" data-panel="cat">
+      <header><h2>The cat</h2><p>How big it is, how fast it moves, and whether it wanders.</p></header>
+
+      <div class="card grid2">
+        <label class="field">
+          <span>Size</span>
+          <input type="range" id="catScale" min="0.7" max="2.2" step="0.05" />
+          <em><output id="catScaleOut"></output> px per design unit</em>
+        </label>
+        <label class="field">
+          <span>Animation speed</span>
+          <input type="range" id="catSpeed" min="0.5" max="2" step="0.05" />
+          <em><output id="catSpeedOut"></output>×</em>
+        </label>
+      </div>
+
+      <div class="card">
+        <label class="row switch">
+          <input type="checkbox" id="catWander" />
+          <span class="lbl"><b>Wander along the bottom of the screen</b><i>Off keeps it parked where you drag it.</i></span>
+        </label>
+        <label class="row switch">
+          <input type="checkbox" id="catSleepy" />
+          <span class="lbl"><b>Doze off between wanders</b><i>Adds the sleeping loaf to its idle rotation.</i></span>
+        </label>
+      </div>
+
+      <div class="card">
+        <p class="cardhead">Try a pose</p>
+        <div class="rowbtns" id="poseBtns">
+          <button class="btn ghost" data-pose="walk">Walk</button>
+          <button class="btn ghost" data-pose="sit">Sit</button>
+          <button class="btn ghost" data-pose="sleep">Sleep</button>
+          <button class="btn ghost" data-pose="pat">Pat</button>
+          <button class="btn ghost" data-pose="angry">Angry</button>
+          <button class="btn ghost" data-pose="bored">Bored</button>
+          <button class="btn ghost" data-pose="confront">Confront</button>
+          <button class="btn ghost" data-pose="swipe">Swipe</button>
+        </div>
+        <p class="cardhead" style="margin-top:18px">Or rehearse the whole interception</p>
+        <div class="rowbtns">
+          <button class="btn" id="previewBust">Show me what it does</button>
+          <button class="btn ghost" id="toggleCat">Hide the cat</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------------- live ---------------- -->
+    <section class="panel" data-panel="live">
+      <header>
+        <h2>Live view</h2>
+        <p>Exactly what the cat can see right now. If a rule is not firing, this is the place to find out why —
+           it shows the text your patterns are actually matched against.</p>
+      </header>
+
+      <div class="card">
+        <div class="kv"><span>Window</span><b id="liveTitle">—</b></div>
+        <div class="kv"><span>URL</span><b id="liveUrl">—</b></div>
+        <div class="kv"><span>Process</span><b id="liveProc">—</b></div>
+        <div class="kv"><span>Matched by</span><b id="liveRule">—</b></div>
+        <div class="kv"><span>Acts in</span><b id="liveRemaining">—</b></div>
+        <div class="kv"><span>Matched against</span><code id="liveHay">—</code></div>
+      </div>
+
+      <div class="card">
+        <p class="cardhead">Recent decisions</p>
+        <div id="liveTrail" class="trail"><span class="dim">nothing yet</span></div>
+      </div>
+
+      <div id="liveNotes"></div>
+    </section>
+
+  </main>
+</div>
+
+<script src="lib/gsap.min.js"></script>
+<script src="lib/MorphSVGPlugin.min.js"></script>
+<script src="lib/cat-rig.js"></script>
+<script src="lib/cat-shapes.js"></script>
+<script src="lib/cat.js"></script>
+<script src="settings.js"></script>
+</body>
+</html>

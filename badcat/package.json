@@ -1,0 +1,18 @@
+{
+  "name": "bad-cat",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A desktop cat that closes your doomscrolling.",
+  "type": "module",
+  "scripts": {
+    "icons": "node scripts/make-icons.mjs",
+    "sync": "node scripts/sync-assets.mjs",
+    "prestart": "npm run sync && npm run icons",
+    "start": "tauri dev",
+    "prebuild": "npm run sync && npm run icons",
+    "build": "tauri build"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}

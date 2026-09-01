@@ -1,0 +1,99 @@
+/* ------------------------------------------------------------------
+   pet.css — the transparent overlay
+   ------------------------------------------------------------------
+   The window covers the entire work area, not just a strip along the
+   bottom — dragging the cat upward and letting it fall needs the room.
+   Everything here must stay transparent: any painted background would
+   cover the desktop.
+
+   --u is px-per-design-unit. pet.js rewrites it when the cat's size
+   changes in settings, and reads it back so the walk speed and the
+   hit box follow the drawing.
+
+   #pet is positioned entirely by pet.js via GSAP x/y (translate) from
+   a top:0;left:0 anchor — both axes are live now, not just x, so pet.js
+   owns "where the cat is" outright rather than splitting it with CSS.
+------------------------------------------------------------------ */
+
+:root { --u: 1.25; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#pet {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(200px * var(--u));
+  height: calc(150px * var(--u));
+  will-change: transform;
+}
+
+#petScene {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* ---------- speech bubble ---------- */
+.bubble {
+  position: absolute;
+  left: 50%;
+  bottom: calc(118px * var(--u));
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+
+  padding: 9px 14px;
+  border-radius: 14px;
+  background: #12161f;
+  border: 1px solid #2a3244;
+  box-shadow: 0 10px 30px -12px rgba(0, 0, 0, .8);
+
+  color: #e8eaf0;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.bubble::after {                 /* the tail pointing at the cat */
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -7px;
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  background: #12161f;
+  border-right: 1px solid #2a3244;
+  border-bottom: 1px solid #2a3244;
+  transform: rotate(45deg);
+}
+
+.bubble[hidden] { display: none; }
+
+.count {
+  font-family: "Cascadia Mono", ui-monospace, monospace;
+  font-size: 12px;
+  color: #ff8f85;
+  background: rgba(226, 88, 79, .12);
+  border-radius: 7px;
+  padding: 2px 7px;
+}
+
+.bubble.is-done .count { color: #8ee0a8; background: rgba(142, 224, 168, .12); }
+.bubble.is-hint .count { color: #9aa6bd; background: rgba(154, 166, 189, .12); }

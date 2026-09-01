@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Bad Cat</title>
+<link rel="stylesheet" href="lib/cat.css" />
+<link rel="stylesheet" href="pet.css" />
+</head>
+<body>
+  <!-- the whole strip is click-through except the cat and its bubble -->
+  <div id="pet">
+    <div id="bubble" class="bubble" hidden>
+      <span id="bubbleText"></span>
+      <span id="bubbleCount" class="count"></span>
+    </div>
+    <svg id="petScene" viewBox="0 0 200 150" aria-hidden="true"></svg>
+  </div>
+
+  <script src="lib/gsap.min.js"></script>
+  <script src="lib/MorphSVGPlugin.min.js"></script>
+  <script src="lib/cat-rig.js"></script>
+  <script src="lib/cat-shapes.js"></script>
+  <script src="lib/cat.js"></script>
+  <script src="pet.js"></script>
+</body>
+</html>

@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MorphCat — a sprite cat built with GSAP MorphSVG</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="css/cat.css" />
+<link rel="stylesheet" href="css/style.css" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐈</text></svg>" />
+</head>
+<body>
+  <main class="app">
+    <header class="masthead">
+      <h1>morph<span>cat</span></h1>
+      <p>One SVG rig, six moods. Every pose is a set of path keyframes tweened with
+        <a href="https://gsap.com/docs/v3/Plugins/MorphSVGPlugin/" target="_blank" rel="noopener">GSAP MorphSVG</a>.</p>
+    </header>
+
+    <div class="stage" id="stage">
+      <svg id="scene" viewBox="0 0 300 180" role="img" aria-label="An animated cat">
+        <defs>
+          <radialGradient id="vignette" cx="50%" cy="55%" r="70%">
+            <stop offset="55%" stop-color="#000" stop-opacity="0" />
+            <stop offset="100%" stop-color="#000" stop-opacity=".45" />
+          </radialGradient>
+        </defs>
+
+        <!-- backdrop -->
+        <g class="grid" aria-hidden="true">
+          <line x1="30"  y1="0" x2="30"  y2="180" />
+          <line x1="90"  y1="0" x2="90"  y2="180" />
+          <line x1="150" y1="0" x2="150" y2="180" />
+          <line x1="210" y1="0" x2="210" y2="180" />
+          <line x1="270" y1="0" x2="270" y2="180" />
+          <line class="floor" x1="0" y1="137" x2="300" y2="137" />
+        </g>
+
+        <!-- the cat rig is mounted here by js/cat-rig.js -->
+
+        <rect id="vignetteRect" x="0" y="0" width="300" height="180" fill="url(#vignette)" pointer-events="none" />
+      </svg>
+
+      <p class="fallback" id="fallback" hidden></p>
+    </div>
+
+    <nav class="controls" id="controls" aria-label="Cat states">
+      <button type="button" data-state="walk"><span class="key">1</span>Walk</button>
+      <button type="button" data-state="sit"><span class="key">2</span>Sit</button>
+      <button type="button" data-state="sleep"><span class="key">3</span>Sleep</button>
+      <button type="button" data-state="pat"><span class="key">4</span>Pat</button>
+      <button type="button" data-state="angry"><span class="key">5</span>Angry</button>
+      <button type="button" data-state="bored"><span class="key">6</span>Bored</button>
+    </nav>
+
+    <div class="dial">
+      <label for="speed">speed</label>
+      <input id="speed" type="range" min="0.4" max="2" step="0.05" value="1" />
+      <output id="speedOut">1.00×</output>
+    </div>
+
+    <footer class="notes">
+      <dl>
+        <div><dt>rig</dt><dd>body · head · 2 ears · 2 eyes · mouth · tail · 4 legs — all <code>&lt;path&gt;</code>, all morph targets</dd></div>
+        <div><dt>poses</dt><dd>authored as point arrays, converted to Catmull‑Rom cubics so every pose shares an identical segment count</dd></div>
+        <div><dt>walk</dt><dd>8 procedurally generated leg keyframes per limb, 4‑beat gait, chained on a looping timeline</dd></div>
+        <div><dt>tail</dt><dd>a travelling wave sampled at 16 phases — each point rides the same sine, delayed along the length, so the tip trails the base</dd></div>
+      </dl>
+    </footer>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.0/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.0/MorphSVGPlugin.min.js"></script>
+  <script src="js/cat-rig.js"></script>
+  <script src="js/cat-shapes.js"></script>
+  <script src="js/cat.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
