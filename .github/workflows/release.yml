@@ -32,10 +32,10 @@ jobs:
 
       - uses: swatinem/rust-cache@v2
         with:
-          workspaces: badcat/src-tauri
+          workspaces: badkat/src-tauri
 
       - name: Install dependencies
-        working-directory: badcat
+        working-directory: badkat
         run: npm ci
 
       - name: Build, sign and publish
@@ -45,9 +45,9 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          projectPath: badcat
+          projectPath: badkat
           tagName: ${{ github.ref_name }}
-          releaseName: "Bad Cat ${{ github.ref_name }}"
+          releaseName: "BadKat ${{ github.ref_name }}"
           releaseBody: "See the assets below to download and install."
           releaseDraft: false
           prerelease: false

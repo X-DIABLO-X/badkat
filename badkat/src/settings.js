@@ -401,7 +401,7 @@
     notes: $("updReleaseNotes")
   };
   const SITE_URL = "https://badkat.cypherion.tech";
-  const REPO_URL = "https://github.com/X-DIABLO-X/badcat";
+  const REPO_URL = "https://github.com/X-DIABLO-X/badkat";
 
   function setUpdStatus(text, kind) {
     upd.status.textContent = text;
@@ -449,7 +449,7 @@
         await invoke("install_update", {});
         // on Windows the installer takes over and restarts the app, so
         // reaching here at all usually means it is about to disappear
-        setUpdStatus("Installing — Bad Cat will restart.", "ready");
+        setUpdStatus("Installing — BadKat will restart.", "ready");
       } catch (err) {
         setUpdStatus("Update failed: " + err, "error");
         upd.install.disabled = false;
@@ -461,7 +461,7 @@
     if (T) {
       T.event.listen("update-progress", (e) => {
         const p = e.payload || {};
-        if (p.installing) { setUpdStatus("Installing — Bad Cat will restart.", "ready"); upd.fill.style.width = "100%"; return; }
+        if (p.installing) { setUpdStatus("Installing — BadKat will restart.", "ready"); upd.fill.style.width = "100%"; return; }
         if (typeof p.percent === "number" && p.total) {
           upd.fill.style.width = Math.min(100, p.percent).toFixed(1) + "%";
           setUpdStatus("Downloading… " + Math.round(p.percent) + "%");

@@ -1,4 +1,4 @@
-/* Draws the Bad Cat app icon and writes the PNG/ICO set Tauri bundles.
+/* Draws the BadKat app icon and writes the PNG/ICO set Tauri bundles.
  *
  * The repo ships no binary assets, so the cat head is rasterised here
  * and PNG-encoded by hand. ICO simply wraps a PNG, which every Windows

@@ -111,7 +111,7 @@ mod tests {
     fn work_is_left_alone() {
         let cfg = Config::default();
         assert!(matches(&cfg, &snap("github.com/greensock/GSAP", "GSAP", "chrome")).is_none());
-        assert!(matches(&cfg, &snap("", "badcat - Visual Studio Code", "Code")).is_none());
+        assert!(matches(&cfg, &snap("", "badkat - Visual Studio Code", "Code")).is_none());
     }
 
     #[test]

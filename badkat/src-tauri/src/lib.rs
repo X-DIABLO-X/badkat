@@ -1,4 +1,4 @@
-//! Bad Cat — a desktop cat that closes your doomscrolling.
+//! BadKat — a desktop cat that closes your doomscrolling.
 //!
 //! Three moving parts:
 //!   * a transparent, click-through overlay strip along the bottom of
@@ -69,7 +69,7 @@ impl Shared {
         let secs = self.started.elapsed().as_secs();
         // debug builds narrate to stdout; `cargo run` is then a live log
         #[cfg(debug_assertions)]
-        eprintln!("[badcat] {event:<8} {rule:<18} {detail}");
+        eprintln!("[badkat] {event:<8} {rule:<18} {detail}");
         self.trail.push(TrailEntry {
             event: event.into(),
             rule: rule.into(),
@@ -326,7 +326,7 @@ async fn install_update(app: AppHandle) -> Result<(), String> {
 }
 
 pub const SITE_URL: &str = "https://badkat.cypherion.tech";
-pub const REPO_URL: &str = "https://github.com/X-DIABLO-X/badcat";
+pub const REPO_URL: &str = "https://github.com/X-DIABLO-X/badkat";
 
 /// Opens one of the project's own links in the default browser.
 ///
@@ -494,7 +494,7 @@ fn set_hitbox(app: AppHandle, x: i32, y: i32, w: i32, h: i32) {
     let _ = hitbox.set_size(PhysicalSize::new(w.max(1), h.max(1)));
     #[cfg(debug_assertions)]
     eprintln!(
-        "[badcat] hitbox   screen=({},{},{},{})",
+        "[badkat] hitbox   screen=({},{},{},{})",
         ox + x, oy + y, ox + x + w, oy + y + h
     );
 }
@@ -536,7 +536,7 @@ fn preview_bust(app: AppHandle, state: tauri::State<State>) {
 #[tauri::command]
 fn jslog(msg: String) {
     #[cfg(debug_assertions)]
-    eprintln!("[badcat] overlay  {msg}");
+    eprintln!("[badkat] overlay  {msg}");
     #[cfg(not(debug_assertions))]
     let _ = msg;
 }
@@ -602,7 +602,7 @@ fn build_overlay(app: &AppHandle) -> tauri::Result<()> {
     // how clicks actually reach the cat.
     let (x, y, w, h) = work_area();
     let window = WebviewWindowBuilder::new(app, "pet", WebviewUrl::App("pet.html".into()))
-        .title("Bad Cat")
+        .title("BadKat")
         .transparent(true)
         .decorations(false)
         .always_on_top(true)
@@ -654,7 +654,7 @@ fn build_overlay(app: &AppHandle) -> tauri::Result<()> {
 ------------------------------------------------------------------- */
 fn build_hitbox_window(app: &AppHandle) -> tauri::Result<()> {
     let window = WebviewWindowBuilder::new(app, "hitbox", WebviewUrl::App("hit.html".into()))
-        .title("Bad Cat hitbox")
+        .title("BadKat hitbox")
         .transparent(true)
         .decorations(false)
         .always_on_top(true)
@@ -685,7 +685,7 @@ fn show_settings(app: &AppHandle) {
         return;
     }
     let built = WebviewWindowBuilder::new(app, "settings", WebviewUrl::App("settings.html".into()))
-        .title("Bad Cat — Settings")
+        .title("BadKat — Settings")
         .inner_size(940.0, 700.0)
         .min_inner_size(720.0, 520.0)
         .resizable(true)
@@ -749,7 +749,7 @@ fn spawn_monitor(app: AppHandle, state: State) {
                     if key != last_seen {
                         last_seen = key;
                         eprintln!(
-                            "[badcat] front    proc={} url={:?} title={:?}",
+                            "[badkat] front    proc={} url={:?} title={:?}",
                             snap.proc, snap.url, snap.title
                         );
                     }
@@ -828,7 +828,7 @@ fn spawn_monitor(app: AppHandle, state: State) {
                                 },
                             );
                             #[cfg(debug_assertions)]
-                            eprintln!("[badcat] emit_to(pet, bust) -> {sent:?}");
+                            eprintln!("[badkat] emit_to(pet, bust) -> {sent:?}");
                         }
                     }
                 }
@@ -868,7 +868,7 @@ fn build_tray(app: &AppHandle, state: State) -> tauri::Result<()> {
     let handle = app.clone();
     TrayIconBuilder::with_id("tray")
         .icon(icon)
-        .tooltip("Bad Cat")
+        .tooltip("BadKat")
         .menu(&menu)
         .show_menu_on_left_click(false)
         .on_menu_event(move |app, event| {
@@ -928,7 +928,7 @@ pub fn run() {
             let (cfg, notes) = config::load(&dir);
             #[cfg(debug_assertions)]
             eprintln!(
-                "[badcat] config {} - {} rule(s), mode {}, enabled {}{}",
+                "[badkat] config {} - {} rule(s), mode {}, enabled {}{}",
                 config::config_path(&dir).display(),
                 cfg.rules.len(),
                 cfg.mode,
@@ -939,7 +939,7 @@ pub fn run() {
             let earned = progress::load(&dir);
             #[cfg(debug_assertions)]
             eprintln!(
-                "[badcat] progress level {} - {}/{} xp, {} closed, {} pats",
+                "[badkat] progress level {} - {}/{} xp, {} closed, {} pats",
                 earned.level, earned.xp, earned.needed(), earned.closes, earned.pats
             );
 
@@ -992,7 +992,7 @@ pub fn run() {
             jslog
         ])
         .build(tauri::generate_context!())
-        .expect("error building Bad Cat")
+        .expect("error building BadKat")
         .run(|_app, event| {
             // A tray app outlives its windows: closing the settings window
             // must not end the process. But Tauri raises ExitRequested for

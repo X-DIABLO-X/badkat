@@ -11,7 +11,7 @@ cargotest/
 .shot-*.png
 .shot-*.json
 *.log
-.badcat*.log
+.badkat*.log
 .morphcat*.log
 
 .DS_Store

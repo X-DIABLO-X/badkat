@@ -1,10 +1,10 @@
-# Bad Cat
+# BadKat
 
 **A desktop cat that closes your doomscrolling.**
 
-[badkat.cypherion.tech](https://badkat.cypherion.tech) · [Download](https://github.com/X-DIABLO-X/badcat/releases/latest) · [Report a bug](https://github.com/X-DIABLO-X/badcat/issues)
+[badkat.cypherion.tech](https://badkat.cypherion.tech) · [Download](https://github.com/X-DIABLO-X/badkat/releases/latest) · [Report a bug](https://github.com/X-DIABLO-X/badkat/issues)
 
-Bad Cat lives along the bottom of your screen. It watches whatever window is in
+BadKat lives along the bottom of your screen. It watches whatever window is in
 front of you, and when Shorts, Reels, TikTok or a streaming site holds the
 foreground for longer than you allowed it, the cat gets up, walks over, and taps
 the window closed with one paw.
@@ -19,7 +19,7 @@ and it updates itself from inside the app.
 
 ## Install
 
-Download the installer from the [latest release](https://github.com/X-DIABLO-X/badcat/releases/latest)
+Download the installer from the [latest release](https://github.com/X-DIABLO-X/badkat/releases/latest)
 and run it.
 
 Windows SmartScreen will warn you the first time, because the installer is not
@@ -35,7 +35,7 @@ Needs [Rust](https://rustup.rs) and [Node](https://nodejs.org) 20+, plus the
 Visual Studio C++ build tools that Tauri requires on Windows.
 
 ```bash
-cd badcat
+cd badkat
 npm install
 npm start          # run it
 npm run build      # produce the installer in src-tauri/target/release/bundle
@@ -80,15 +80,15 @@ changing a slider or restoring defaults can never cost the cat its levels.
 
 | Path | What lives there |
 | --- | --- |
-| `badcat/` | the Tauri app — Rust backend in `src-tauri/`, dashboard in `src/` |
+| `badkat/` | the Tauri app — Rust backend in `src-tauri/`, dashboard in `src/` |
 | `site/` | the landing page at badkat.cypherion.tech |
 | `js/`, `css/` | the canonical cat rig, copied into the app and the site by `sync-assets.mjs` |
 | `index.html` | a demo stage for looking at the character on its own |
 | `tools/` | small analysis scripts (see `fit-anger-arcs.py`) |
-| `desktop/` | the original Electron prototype, superseded by `badcat/` |
+| `desktop/` | the original Electron prototype, superseded by `badkat/` |
 
 The rig lives at the repo root and is **copied** into both surfaces by
-`badcat/scripts/sync-assets.mjs` rather than referenced, so the cat on the
+`badkat/scripts/sync-assets.mjs` rather than referenced, so the cat on the
 website cannot quietly fall a version behind the cat in the product.
 
 ---

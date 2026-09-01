@@ -8,7 +8,7 @@
 (function () {
   "use strict";
 
-  var REPO = "X-DIABLO-X/badcat";
+  var REPO = "X-DIABLO-X/badkat";
 
   /* ---------------- the live cat ---------------- */
   if (window.CatRig && window.Cat && window.gsap) {

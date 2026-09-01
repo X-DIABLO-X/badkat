@@ -1,12 +1,12 @@
 [package]
-name = "bad-cat"
+name = "badkat"
 version = "0.1.0"
 description = "A desktop cat that closes your doomscrolling."
 edition = "2021"
 rust-version = "1.77"
 
 [lib]
-name = "bad_cat_lib"
+name = "badkat_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

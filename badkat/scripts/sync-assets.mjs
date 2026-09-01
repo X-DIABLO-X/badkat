@@ -17,7 +17,7 @@ const repo = join(here, "..", "..");
  * cat on the website cannot quietly fall a version behind the cat in
  * the product. */
 const targets = [
-  { dir: join(here, "..", "src", "lib"), label: "badcat/src/lib" },
+  { dir: join(here, "..", "src", "lib"), label: "badkat/src/lib" },
   { dir: join(repo, "site", "lib"), label: "site/lib" }
 ];
 
