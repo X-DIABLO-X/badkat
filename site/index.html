@@ -10,6 +10,8 @@
 <meta property="og:description" content="A desktop cat that closes your doomscrolling. Free and open source for Windows." />
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://badkat.cypherion.tech" />
+<meta property="og:image" content="https://badkat.cypherion.tech/shots/patrol.png" />
+<meta name="twitter:card" content="summary_large_image" />
 
 <link rel="icon" href="favicon.ico" />
 <link rel="stylesheet" href="lib/cat.css" />
@@ -21,24 +23,26 @@
   <!-- a static icon, not a second rig: the rig hard-codes element ids,
        so mounting it twice on one page would give the controller two
        #cat elements to choose between and it would drive the wrong one -->
-  <a class="brand" href="/">
+  <a class="brand" href="#top">
     <img class="brandmark" src="icon.png" alt="" width="26" height="26" />
     <span>BadKat</span>
   </a>
   <nav>
     <a href="#how">How it works</a>
+    <a href="#inside">Inside the app</a>
     <a href="#levels">Levels</a>
-    <a href="#download">Download</a>
+    <a href="#faq">FAQ</a>
     <a class="ghost" href="https://github.com/X-DIABLO-X/badkat" target="_blank" rel="noopener">GitHub</a>
+    <a class="solid" href="#download">Download</a>
   </nav>
 </header>
 
-<main>
+<main id="top">
 
   <!-- ---------------- hero ---------------- -->
   <section class="hero">
     <div class="hero-copy">
-      <p class="eyebrow">Free · open source · Windows</p>
+      <p class="eyebrow">Free · open source · Windows 10 &amp; 11</p>
       <h1>Your cat has opinions<br />about your screen time.</h1>
       <p class="lede">
         BadKat sits along the bottom of your screen. When Shorts, Reels, TikTok or a
@@ -53,7 +57,7 @@
     </div>
 
     <!-- the live rig: the real cat, not a screenshot -->
-    <div class="stage" id="stage">
+    <div class="stage">
       <div class="desk">
         <svg class="scene" viewBox="0 0 300 170" aria-label="An animated cat sitting on a desk">
           <g id="sceneCat"></g>
@@ -68,23 +72,31 @@
         <button data-state="angry">Angry</button>
         <button data-state="bored">Bored</button>
         <button data-act="swipe">Swipe</button>
-        <button data-act="levelup">Level up</button>
+        <button data-act="levelup">Level&nbsp;up</button>
       </div>
-      <p class="stagehint">That's the actual character, running the same rig as the app. Poke it.</p>
+      <p class="stagehint">Not a video — that's the real character running the same rig as the app. Poke it.</p>
     </div>
+  </section>
+
+  <!-- ---------------- trust strip ---------------- -->
+  <section class="strip">
+    <div><b>No account</b><span>nothing to sign up for</span></div>
+    <div><b>No telemetry</b><span>nothing leaves your machine</span></div>
+    <div><b>No admin rights</b><span>installs to your user folder</span></div>
+    <div><b>Updates itself</b><span>from inside the app</span></div>
   </section>
 
   <!-- ---------------- how ---------------- -->
   <section id="how" class="band">
-    <h2>How it works</h2>
+    <p class="kicker">How it works</p>
+    <h2>Three things, on a loop.</h2>
     <div class="cards">
       <article>
         <span class="num">01</span>
         <h3>It watches the foreground</h3>
         <p>
           Every second it reads the window in front of you — the URL, the title and the
-          process. Nothing is uploaded and nothing is logged; the check happens on your
-          machine and the answer is thrown away.
+          process name. The check happens on your machine and the answer is thrown away.
         </p>
       </article>
       <article>
@@ -108,40 +120,84 @@
     </div>
   </section>
 
+  <!-- ---------------- screenshots ---------------- -->
+  <section id="inside" class="band alt">
+    <p class="kicker">Inside the app</p>
+    <h2>Everything is a setting, and nothing is a mystery.</h2>
+
+    <figure class="shot wide">
+      <img src="shots/patrol.png" alt="The BadKat settings window, Patrol panel: an on-patrol switch, a choice between closing the window or only complaining, and fields for the countdown, snooze length and polling intervals." width="1193" height="913" loading="lazy" />
+      <figcaption>
+        <b>Patrol</b> — how long it waits, what it does when it arrives, and how hard it
+        looks. Set the countdown to zero if you want it merciless.
+      </figcaption>
+    </figure>
+
+    <div class="shotgrid">
+      <figure class="shot">
+        <img src="shots/rules.png" alt="The What counts panel, showing editable rules for YouTube Shorts, Instagram Reels and TikTok with their match patterns, grace periods and actions." width="1193" height="688" loading="lazy" />
+        <figcaption>
+          <b>What counts</b> — every rule is editable. Match on the URL, the window title,
+          the process, or all three.
+        </figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="shots/levels.png" alt="The cat panel, showing size and animation speed sliders, wander and doze toggles, and an affection section with level, windows closed, pats and total XP." width="1193" height="688" loading="lazy" />
+        <figcaption>
+          <b>The cat</b> — size, speed, whether it wanders, and what it has earned from
+          you so far.
+        </figcaption>
+      </figure>
+    </div>
+
+    <div class="note info">
+      There is also a <b>Live view</b> panel that shows the exact text your patterns are
+      matched against, right now. It exists because “why didn't it fire?” is the most
+      common question this kind of app can raise, and the only honest answer is to show
+      you what it actually sees.
+    </div>
+  </section>
+
   <!-- ---------------- levels ---------------- -->
-  <section id="levels" class="band alt">
+  <section id="levels" class="band">
     <div class="split">
       <div>
-        <h2>It remembers what you did together</h2>
+        <p class="kicker">Levels</p>
+        <h2>It remembers what you did together.</h2>
         <p class="lede small">
-          Every window it closes earns XP, and so does patting it. Levels cost more as
-          they go, so the number means something by the time it gets high. Level-ups
-          unlock new lines and animations.
+          Every window it closes earns XP, and so does patting it. Each level costs more
+          than the last, so the number means something by the time it gets high.
+          Level-ups will unlock new lines and animations.
         </p>
         <ul class="ticks">
-          <li>25 XP per window actually closed</li>
-          <li>5 XP for a pat, rate limited so it stays honest</li>
-          <li>Progress is saved separately from your settings and survives a reset</li>
+          <li><b>25 XP</b> per window actually closed — a refused close earns nothing</li>
+          <li><b>5 XP</b> for a pat, rate limited so leaning on the cat can't farm it</li>
+          <li>Progress is saved separately from your settings, so a reset can't wipe it</li>
         </ul>
+        <p class="fineprint">
+          Try it: hit <b>Level&nbsp;up</b> on the cat at the top of this page.
+        </p>
       </div>
       <div class="levelcard">
-        <div class="lvlhead"><span>Lv. <b>5</b></span><i>42 / 135 XP</i></div>
-        <div class="lvlbar"><i style="width:31%"></i></div>
+        <div class="lvlhead"><span>Lv. <b>3</b></span><i>70 / 80 XP</i></div>
+        <div class="lvlbar"><i style="width:87%"></i></div>
         <div class="lvlstats">
-          <div><b>21</b><span>closed</span></div>
-          <div><b>18</b><span>pats</span></div>
-          <div><b>615</b><span>total XP</span></div>
+          <div><b>7</b><span>closed</span></div>
+          <div><b>2</b><span>pats</span></div>
+          <div><b>185</b><span>total XP</span></div>
         </div>
+        <p class="lvlnote">The meter sits in the sidebar, visible from every panel.</p>
       </div>
     </div>
   </section>
 
   <!-- ---------------- download ---------------- -->
-  <section id="download" class="band">
-    <h2>Get it</h2>
+  <section id="download" class="band alt">
+    <p class="kicker center">Get it</p>
+    <h2 class="center">Download BadKat</h2>
     <p class="lede small center">
-      Windows 10 and 11. It installs to your user folder, so it needs no admin rights,
-      and it updates itself from inside the app — you will not have to come back here.
+      Windows 10 and 11. Installs to your user folder, so it needs no admin rights, and
+      it updates itself from inside the app — you will not have to come back here.
     </p>
 
     <div class="dl">
@@ -163,17 +219,66 @@
     </div>
   </section>
 
+  <!-- ---------------- faq ---------------- -->
+  <section id="faq" class="band">
+    <p class="kicker">Questions</p>
+    <h2>The things people ask first.</h2>
+    <div class="faq">
+      <details>
+        <summary>Does it send anything anywhere?</summary>
+        <p>
+          No. There is no account, no analytics and no server. The only network request
+          BadKat ever makes is asking GitHub whether a newer release exists.
+        </p>
+      </details>
+      <details>
+        <summary>Will it close something I actually needed?</summary>
+        <p>
+          It only acts on rules you can see and edit, and anything on the <b>Never touch</b>
+          list is left alone whatever else it matches. If you want to watch it work before
+          trusting it, switch it to <b>Only complain</b> — the cat still storms over and
+          glares, but never acts.
+        </p>
+      </details>
+      <details>
+        <summary>Can I just have the cat, without the discipline?</summary>
+        <p>
+          Yes. Turn <b>On patrol</b> off and it becomes an ordinary desktop pet that wanders,
+          sleeps, and lets you drag it around and drop it.
+        </p>
+      </details>
+      <details>
+        <summary>How do I get rid of it?</summary>
+        <p>
+          Quit from the tray icon, or uninstall it like any Windows app. It installs to your
+          own user folder and leaves nothing behind in system directories.
+        </p>
+      </details>
+      <details>
+        <summary>Why is it a cat?</summary>
+        <p>
+          A progress bar telling you that you have watched Reels for forty minutes is easy
+          to close and easier to ignore. Something with a face that walks over and looks at
+          you is harder.
+        </p>
+      </details>
+    </div>
+  </section>
+
   <!-- ---------------- open source ---------------- -->
   <section class="band alt">
     <div class="oss">
-      <h2>Open source</h2>
+      <p class="kicker center">Open source</p>
+      <h2 class="center">Read it, fork it, take the cat.</h2>
       <p class="lede small">
-        All of it — the Rust side, the animation rig, the release pipeline. Read it, fork
-        it, file an issue, or take the cat and put it somewhere else.
+        All of it — the Rust backend, the animation rig, the release pipeline. MIT licensed.
       </p>
       <div class="cta center">
         <a class="btn primary" href="https://github.com/X-DIABLO-X/badkat" target="_blank" rel="noopener">
           X-DIABLO-X/badkat
+        </a>
+        <a class="btn" href="https://github.com/X-DIABLO-X/badkat/issues" target="_blank" rel="noopener">
+          Report a bug
         </a>
       </div>
     </div>
@@ -189,7 +294,7 @@
     <span>·</span>
     <a href="https://github.com/X-DIABLO-X/badkat/releases" target="_blank" rel="noopener">Releases</a>
   </p>
-  <p class="dim">badkat.cypherion.tech — built with GSAP MorphSVG and Tauri.</p>
+  <p class="dim">badkat.cypherion.tech — built with Tauri, Rust and GSAP MorphSVG.</p>
 </footer>
 
 <script src="lib/gsap.min.js"></script>
