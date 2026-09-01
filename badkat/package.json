@@ -10,7 +10,9 @@
     "prestart": "npm run sync && npm run icons",
     "start": "tauri dev",
     "prebuild": "npm run sync && npm run icons",
-    "build": "tauri build"
+    "build": "tauri build",
+    "pretauri": "npm run sync && npm run icons",
+    "tauri": "tauri"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2"
