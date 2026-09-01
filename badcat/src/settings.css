@@ -13,6 +13,7 @@
   --accent:  #ece7da;
   --warn:    #e2584f;
   --ok:      #8ee0a8;
+  --gold:    #f2c14e;
   --mono: "Cascadia Mono", ui-monospace, Consolas, monospace;
 }
 
@@ -47,6 +48,52 @@ html, body {
 .brandcat { width: 54px; height: 41px; flex: 0 0 54px; overflow: visible; }
 .brand h1 { margin: 0; font-size: 16px; letter-spacing: -0.02em; }
 .brand p { margin: 2px 0 0; font-size: 11.5px; color: var(--muted); }
+
+/* ---------- affection meter (sidebar) ---------- */
+.levelcard {
+  margin: 0 2px 14px;
+  padding: 10px 11px 11px;
+  background: #141a25;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+}
+.levelhead { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.lvlbadge { font-size: 12px; color: var(--muted); letter-spacing: .01em; }
+.lvlbadge b { font-size: 17px; color: var(--gold); margin-left: 3px; }
+.lvlxp { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.xptrack {
+  margin-top: 8px;
+  height: 6px;
+  border-radius: 4px;
+  background: #0d1219;
+  overflow: hidden;
+}
+.xptrack i {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--gold), #f6d98a);
+  /* the bar animates so a level-up reads as motion, not a redraw */
+  transition: width .5s cubic-bezier(.22,.9,.28,1);
+}
+/* a level-up flashes the card once, so the number changing is noticed */
+@keyframes lvlpop {
+  0%   { box-shadow: 0 0 0 0 rgba(242,193,78,.55); }
+  100% { box-shadow: 0 0 0 14px rgba(242,193,78,0); }
+}
+.levelcard.is-up { animation: lvlpop .8s ease-out; border-color: var(--gold); }
+
+/* ---------- stats ---------- */
+.statrow { display: flex; flex-wrap: wrap; gap: 10px; }
+.stat {
+  flex: 1 1 90px;
+  background: #141a25;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 11px 12px;
+}
+.stat b { display: block; font-size: 20px; letter-spacing: -0.02em; }
+.stat span { font-size: 11.5px; color: var(--muted); }
 
 .nav {
   appearance: none;

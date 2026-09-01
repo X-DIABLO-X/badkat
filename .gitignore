@@ -1,12 +1,18 @@
 node_modules/
+
+# Rust build output — several GB, entirely regenerable
 target/
 **/target/
+
+# scratch crate used to check a dependency in isolation; has its own .git
+cargotest/
+
+# screenshots and logs from the test harnesses
 .shot-*.png
 .shot-*.json
 *.log
 .badcat*.log
 .morphcat*.log
-cargotest/
+
 .DS_Store
 Thumbs.db
-

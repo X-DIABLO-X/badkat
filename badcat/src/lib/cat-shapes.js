@@ -276,19 +276,6 @@
     [-31, -12, 0.80]
   ];
 
-  var HEAD_ALERT = [                   // startled: ears perked straight up, head high
-    [-21, -44, 0.16],
-    [-2, -21, 0.85],
-    [18, -44, 0.16],
-    [29, -14, 0.80],
-    [32, 4, 1.00],
-    [22, 21, 1.00],
-    [0, 27, 1.00],
-    [-21, 21, 1.00],
-    [-32, 4, 1.00],
-    [-31, -14, 0.80]
-  ];
-
   /* Inner ears: each is its own outer ear triangle inset 35% toward
      that triangle's centroid, so it always sits square inside the ear. */
   var EAR_L_AWAKE = [[-19.5, -33, 0.20], [-7.5, -20.5, 0.90], [-26, -17, 0.80]];
@@ -299,10 +286,6 @@
   var EAR_R_ANGRY = [[21.7, -22.4, 0.20], [25.6, -14.6, 0.80], [4.8, -21.1, 0.90]];
   var EAR_L_BORED = [[-20.8, -28.8, 0.20], [-7.8, -19, 0.90], [-26.2, -16, 0.80]];
   var EAR_R_BORED = [[14.8, -29.4, 0.20], [24.2, -15.6, 0.80], [4, -19, 0.90]];
-  var EAR_L_ALERT = [[-20.5, -39, 0.20], [-7.5, -22, 0.90], [-27, -18.5, 0.80]];
-  var EAR_R_ALERT = [[17.2, -39, 0.20], [25, -17.5, 0.80], [3.9, -22, 0.90]];
-
-  function eyeAlert(cx, cy) { return ring(cx, cy - 0.2, 4.4, 5.2); }
 
   var POSES = {
     walk: {
@@ -446,27 +429,6 @@
         bn: [[76, 116], [82, 121], [88, 123]],
         bf: [[70, 117], [76, 122], [82, 124]]
       }
-    },
-
-    /* alert: startled upright, ears high, eyes wide, noticing doomscrolling */
-    alert: {
-      body: [
-        [124, 62, 1], [110, 55, 1], [95, 64, 1], [82, 88, 1], [76, 112, 1],
-        [82, 130, 1], [108, 136, 1], [132, 135, 1], [145, 113, 1], [141, 84, 1]
-      ],
-      head: HEAD_ALERT, earL: EAR_L_ALERT, earR: EAR_R_ALERT,
-      eyes: "alert", mouth: MOUTH.flat,
-      tail: [[86, 124], [64, 126], [46, 122], [32, 112], [26, 98]],
-      tailWidth: 9,
-      headPos: { x: 136, y: 53, rotation: -4, scaleX: 1, scaleY: 1.02 },
-      shadow: { rx: 36, cx: 108, opacity: 0.26 },
-      alert: { x: 172, y: 32 },
-      legs: {
-        fn: [[130, 120], [138, 127], [148, 130]],
-        ff: [[122, 122], [130, 128], [140, 131]],
-        bn: [[95, 119], [99, 122], [103, 124]],
-        bf: [[89, 120], [93, 123], [97, 125]]
-      }
     }
   };
 
@@ -476,54 +438,107 @@
       closed: eyeClosed(-11, -1),
       happy: eyeHappy(-11, -1),
       angry: eyeAngry(-11, -1, 1),
-      bored: eyeBored(-11, -1),
-      alert: eyeAlert(-11, -1)
+      bored: eyeBored(-11, -1)
     },
     right: {
       open: eyeOpen(11, -1),
       closed: eyeClosed(11, -1),
       happy: eyeHappy(11, -1),
       angry: eyeAngry(11, -1, -1),
-      bored: eyeBored(11, -1),
-      alert: eyeAlert(11, -1)
+      bored: eyeBored(11, -1)
     }
   };
 
   /* ---------- props ------------------------------------------------ */
   var HEART = "M0,4.2 C-5.4,-1.2 -4.2,-7.4 0,-3.6 C4.2,-7.4 5.4,-1.2 0,4.2 Z";
 
-  /* Alert exclamation stem: tapered manga pill/wedge */
-  var ALERT_STEM = "M-2.6,-22 C-2.6,-24.5 2.6,-24.5 2.6,-22 L1.6,-6.5 C1.6,-5.2 -1.6,-5.2 -1.6,-6.5 Z";
+  /* Concatenates several closed point-arrays into one compound `d`
+     string (multiple "M...Z" subpaths, one fill). Lets a multi-piece
+     icon — a paw print's pad plus four toes — live in a single element
+     instead of five, since none of the pieces ever need to move or
+     morph independently. */
+  function compoundPath(shapes) {
+    return shapes.map(closedPath).join(" ");
+  }
 
-  /* LEGACY ANGER MARK (PRESERVED FOR REVERTIBILITY):
-  var ANGER_LEGACY = [
-    [[-3.5, -6.5, 0], [0, -11, 0], [3.5, -6.5, 0]],
-    [[6.5, -3.5, 0], [11, 0, 0], [6.5, 3.5, 0]],
-    [[3.5, 6.5, 0], [0, 11, 0], [-3.5, 6.5, 0]],
-    [[-6.5, 3.5, 0], [-11, 0, 0], [-6.5, -3.5, 0]]
-  ];
-  */
-  var ANGER_LEGACY = [
-    [[-3.5, -6.5, 0], [0, -11, 0], [3.5, -6.5, 0]],
-    [[6.5, -3.5, 0], [11, 0, 0], [6.5, 3.5, 0]],
-    [[3.5, 6.5, 0], [0, 11, 0], [-3.5, 6.5, 0]],
-    [[-6.5, 3.5, 0], [-11, 0, 0], [-6.5, -3.5, 0]]
-  ];
+  /* One segment of an annulus: a band of constant thickness following a
+     circular arc, with both ends cut square along a radius. Emitted as a
+     raw `d` using SVG's own arc command rather than the spline builder,
+     because a circle is exactly what an `A` command draws and exactly
+     what a Catmull-Rom through sampled points only approximates.
 
-  /* Authentic Japanese manga/anime anger vein mark 💢 (ikari mark):
-     Four curved, bulging lobes radiating from a pinched central waist.
-     Each lobe features convex bulging flanks [tension 1.0] and a crisp apex
-     [tension 0.25], modeling subcutaneous blood vessels swelling under tension. */
-  var ANGER = [
-    // North lobe
-    [[-2.2, -2.5, 1], [-4.6, -6.8, 1], [0, -10.8, 0.25], [4.6, -6.8, 1], [2.2, -2.5, 1]],
-    // East lobe
-    [[2.5, -2.2, 1], [6.8, -4.6, 1], [10.8, 0, 0.25], [6.8, 4.6, 1], [2.5, 2.2, 1]],
-    // South lobe
-    [[2.2, 2.5, 1], [4.6, 6.8, 1], [0, 10.8, 0.25], [-4.6, 6.8, 1], [-2.2, 2.5, 1]],
-    // West lobe
-    [[-2.5, 2.2, 1], [-6.8, 4.6, 1], [-10.8, 0, 0.25], [-6.8, -4.6, 1], [-2.5, -2.2, 1]]
-  ];
+     Angles are in the usual maths convention (0 = east, rising counter-
+     clockwise). Since SVG's y axis points down, a rising angle sweeps
+     counter-clockwise on screen, which is sweep-flag 0; the return leg
+     along the inner radius runs the other way, so it takes flag 1. */
+  function arcBand(cx, cy, rIn, rOut, a0, a1) {
+    var at = function (r, a) {
+      return R(cx + r * Math.cos(a * RAD)) + "," + R(cy - r * Math.sin(a * RAD));
+    };
+    var large = Math.abs(a1 - a0) > 180 ? 1 : 0;
+    return "M" + at(rOut, a0) +
+      "A" + R(rOut) + "," + R(rOut) + " 0 " + large + " 0 " + at(rOut, a1) +
+      "L" + at(rIn, a1) +
+      "A" + R(rIn) + "," + R(rIn) + " 0 " + large + " 1 " + at(rIn, a0) +
+      "Z";
+  }
+
+  /* The anger mark — the manga "vein pop" symbol (💢) — as THREE arcs.
+     Two earlier passes got this wrong in instructive ways. Arms with a
+     CORNER in them read as pinwheel blades, so four of those spinning
+     round a hub read as a windmill. Replacing them with arcs helped,
+     but sharing one centre in the middle was still wrong: concentric
+     segments curve AROUND the middle, which is just a broken ring.
+
+     What the symbol actually does is the opposite. Each arm carries its
+     own centre of curvature, sitting OUTSIDE the symbol on that arm's
+     own bearing, so every arm bows INWARD — its middle is the part
+     nearest the centre and its two tips splay outward and away. The
+     three arms then cup a hollow, and the three channels between their
+     tips run out from it: the negative space is a three-way junction.
+     tools/fit-anger-arcs.py recovers these numbers from a reference
+     image (it fits the centre that makes an arm's pixels equidistant),
+     and reports whether that centre falls inside or outside — which is
+     the single measurement that separates this from the ring version. */
+  var ANGER_ARM_DIST = 13.7;     // how far out each arm's centre of curvature sits
+  var ANGER_R_IN = 5.95;         // that centre to the arm's outer, splayed edge
+  var ANGER_R_OUT = 10.5;        // that centre to the arm's inner edge, nearest the middle
+  var ANGER_HALF_SPAN = 48;      // degrees of arc either side of the inward direction
+
+  var ANGER = [150, 270, 30].map(function (bearing) {
+    var a = bearing * RAD;
+    var inward = bearing + 180;
+    return arcBand(
+      ANGER_ARM_DIST * Math.cos(a), -ANGER_ARM_DIST * Math.sin(a),
+      ANGER_R_IN, ANGER_R_OUT,
+      inward - ANGER_HALF_SPAN, inward + ANGER_HALF_SPAN
+    );
+  });
+
+  /* A four-point sparkle for the level-up burst. Deliberately concave
+     between the points — a diamond reads as a gem and a round blob as a
+     bubble, where the pinched waist is what says "twinkle". */
+  var SPARK = (function () {
+    var pts = [];
+    for (var i = 0; i < 8; i++) {
+      var a = i * 45 * RAD;
+      var r = (i % 2 === 0) ? 4.6 : 1.15;          // long point, then a deep notch
+      pts.push([r * Math.cos(a), -r * Math.sin(a), i % 2 === 0 ? 0.35 : 0.7]);
+    }
+    return closedPath(pts);
+  })();
+
+  /* A simplified paw print: one wide pad plus four toes, all filled as
+     one compound shape. Used at the moment the swipe lands instead of
+     the anger mark, since a paw print reads as "this is what hit it"
+     where the vein mark reads as a mood, not an impact. */
+  var PAWPRINT = compoundPath([
+    ring(0, 4.4, 5.6, 4.3, 8),
+    ring(-6.1, -4.4, 2.3, 2.6, 8),
+    ring(-2.3, -7.6, 2.5, 2.9, 8),
+    ring(2.3, -7.6, 2.5, 2.9, 8),
+    ring(6.1, -4.4, 2.3, 2.6, 8)
+  ]);
 
   global.CatShapes = {
     buildPath: buildPath,
@@ -543,8 +558,8 @@
     flickEars: flickEars,
     flattenEars: flattenEars,
     HEART: HEART,
-    ALERT_STEM: ALERT_STEM,
     ANGER: ANGER,
-    ANGER_LEGACY: ANGER_LEGACY
+    PAWPRINT: PAWPRINT,
+    SPARK: SPARK
   };
 })(window);

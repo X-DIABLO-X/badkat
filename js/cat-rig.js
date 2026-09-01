@@ -44,14 +44,37 @@
     '</g>',
 
     // props — each is only shown by the states that use it
-    '<g id="alert" aria-hidden="true">',
-    '  <path class="alert-stem" d="M0,0" />',
-    '  <circle class="alert-dot" cx="0" cy="0" r="2.2" />',
-    '</g>',
-
+    // anger: three arc bands, each a filled shape carrying its own dark
+    // border, which is what gives the vein-pop symbol its cartoon edge.
     '<g id="anger" aria-hidden="true">',
     '  <path class="anger-mark" d="M0,0" /><path class="anger-mark" d="M0,0" />',
-    '  <path class="anger-mark" d="M0,0" /><path class="anger-mark" d="M0,0" />',
+    '  <path class="anger-mark" d="M0,0" />',
+    '</g>',
+
+    '<path id="pawprint" class="pawprint" aria-hidden="true" d="M0,0" />',
+
+    // level-up: faint rising streaks behind, then sparkles and dots
+    // around a dark "Lv. N" pill. Painted back-to-front in that order.
+    '<g id="levelup" aria-hidden="true">',
+    '  <g id="lvlStreaks">',
+    '    <rect class="streak" x="-0.6" y="-11" width="1.2" height="22" rx="0.6" />',
+    '    <rect class="streak" x="-0.6" y="-11" width="1.2" height="22" rx="0.6" />',
+    '    <rect class="streak" x="-0.6" y="-11" width="1.2" height="22" rx="0.6" />',
+    '    <rect class="streak" x="-0.6" y="-11" width="1.2" height="22" rx="0.6" />',
+    '  </g>',
+    '  <g id="lvlSparks">',
+    '    <path class="lvl-spark" d="M0,0" /><path class="lvl-spark" d="M0,0" />',
+    '    <path class="lvl-spark" d="M0,0" /><path class="lvl-spark" d="M0,0" />',
+    '    <circle class="lvl-dot" cx="0" cy="0" r="1.05" />',
+    '    <circle class="lvl-dot" cx="0" cy="0" r="1.05" />',
+    '    <circle class="lvl-dot" cx="0" cy="0" r="1.05" />',
+    '    <circle class="lvl-dot" cx="0" cy="0" r="1.05" />',
+    '  </g>',
+    '  <g id="lvlBadge">',
+    '    <rect id="lvlPill" class="lvl-pill" x="-24" y="-7.6" width="48" height="15.2" rx="7.6" />',
+    '    <text id="lvlText" class="lvl-text" x="0" y="0">Lv. 1</text>',
+    '    <path id="lvlArrow" class="lvl-arrow" d="M0,-4.1 L3.5,0.1 L1.45,0.1 L1.45,4.1 L-1.45,4.1 L-1.45,0.1 L-3.5,0.1 Z" />',
+    '  </g>',
     '</g>',
 
     '<g id="hearts" aria-hidden="true">',

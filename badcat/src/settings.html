@@ -18,6 +18,15 @@
       </div>
     </div>
 
+    <div class="levelcard">
+      <div class="levelhead">
+        <span class="lvlbadge">Lv <b id="lvlNum">1</b></span>
+        <span class="lvlxp" id="lvlXp">0 / 50</span>
+      </div>
+      <div class="xptrack"><i id="xpFill" style="width:0%"></i></div>
+      <p class="lvlnote" id="lvlNote">50 XP to level 2</p>
+    </div>
+
     <button class="nav" data-panel="patrol" aria-current="true">Patrol</button>
     <button class="nav" data-panel="rules">What counts</button>
     <button class="nav" data-panel="never">Never touch</button>
@@ -147,6 +156,21 @@
       </div>
 
       <div class="card">
+        <p class="cardhead">Affection</p>
+        <p class="dim" style="margin:0 0 14px;font-size:12.5px">
+          The cat earns XP for every window it actually closes, and a little for being
+          patted. Each level costs more than the last. Levels will unlock new lines and
+          animations later; for now they are a record of what it has done for you.
+        </p>
+        <div class="statrow">
+          <div class="stat"><b id="statLevel">1</b><span>level</span></div>
+          <div class="stat"><b id="statClosed">0</b><span>windows closed</span></div>
+          <div class="stat"><b id="statPats">0</b><span>pats</span></div>
+          <div class="stat"><b id="statXp">0</b><span>total XP</span></div>
+        </div>
+      </div>
+
+      <div class="card">
         <p class="cardhead">Try a pose</p>
         <div class="rowbtns" id="poseBtns">
           <button class="btn ghost" data-pose="walk">Walk</button>
@@ -154,7 +178,6 @@
           <button class="btn ghost" data-pose="sleep">Sleep</button>
           <button class="btn ghost" data-pose="pat">Pat</button>
           <button class="btn ghost" data-pose="angry">Angry</button>
-          <button class="btn ghost" data-pose="alert">Alert (!)</button>
           <button class="btn ghost" data-pose="bored">Bored</button>
           <button class="btn ghost" data-pose="confront">Confront</button>
           <button class="btn ghost" data-pose="swipe">Swipe</button>

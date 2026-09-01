@@ -32,6 +32,9 @@
       if (cmd === "get_config") { return cfg; }
       if (cmd === "save_config") { cfg = args.cfg; return null; }
       if (cmd === "reset_rules") { return cfg.rules; }
+      if (cmd === "get_progress") {
+        return { level: 4, xp: 42, needed: 105, totalXp: 615, closes: 21, pats: 18, gained: 0 };
+      }
       if (cmd === "status") {
         return {
           enabled: true, mode: "close", snoozing: false, snoozeSecondsLeft: 0,
@@ -355,6 +358,37 @@
       live.notes.appendChild(box);
     });
   }
+
+  /* ---------------- affection ---------------- */
+  const lvl = {
+    num: $("lvlNum"), xp: $("lvlXp"), fill: $("xpFill"), note: $("lvlNote"),
+    card: document.querySelector(".levelcard"),
+    statLevel: $("statLevel"), statClosed: $("statClosed"),
+    statPats: $("statPats"), statXp: $("statXp")
+  };
+
+  function paintProgress(p) {
+    if (!p) { return; }
+    const pct = p.needed > 0 ? Math.min(100, (p.xp / p.needed) * 100) : 0;
+    lvl.num.textContent = p.level;
+    lvl.xp.textContent = p.xp + " / " + p.needed;
+    lvl.fill.style.width = pct.toFixed(1) + "%";
+    lvl.note.textContent = (p.needed - p.xp) + " XP to level " + (p.level + 1);
+    lvl.statLevel.textContent = p.level;
+    lvl.statClosed.textContent = p.closes;
+    lvl.statPats.textContent = p.pats;
+    lvl.statXp.textContent = p.totalXp;
+
+    if (p.gained) {
+      // restart the flash even if it is mid-animation from a previous level
+      lvl.card.classList.remove("is-up");
+      void lvl.card.offsetWidth;
+      lvl.card.classList.add("is-up");
+    }
+  }
+
+  invoke("get_progress", {}).then(paintProgress).catch(() => {});
+  if (T) { T.event.listen("progress", (e) => paintProgress(e.payload)); }
 
   /* ---------------- go ---------------- */
   invoke("get_config", {}).then((loaded) => {

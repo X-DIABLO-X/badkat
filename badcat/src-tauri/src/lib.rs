@@ -11,23 +11,13 @@
 //! itself. It asks, and the Rust side re-verifies before acting.
 
 mod config;
+mod progress;
 mod rules;
 mod win;
 
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
-
-#[derive(Default)]
-pub struct HitBox {
-    pub left: AtomicI32,
-    pub top: AtomicI32,
-    pub right: AtomicI32,
-    pub bottom: AtomicI32,
-    pub active: AtomicBool,
-    pub dragging: AtomicBool,
-}
 
 use serde::Serialize;
 use tauri::{
@@ -37,10 +27,14 @@ use tauri::{
 };
 
 use config::Config;
+use progress::Progress;
 use win::Snapshot;
 
 const COOLDOWN: Duration = Duration::from_secs(12);
 const TRAIL_MAX: usize = 40;
+/// A pat is worth XP, but clicking the cat is free and fast. Without a
+/// floor between awards the level system is just a clicker game.
+const PAT_COOLDOWN: Duration = Duration::from_secs(4);
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -62,6 +56,8 @@ pub struct Shared {
     remaining: f64,
     trail: Vec<TrailEntry>,
     started: Instant,
+    progress: Progress,
+    last_pat: Option<Instant>,
 }
 
 impl Shared {
@@ -114,6 +110,37 @@ struct StatusPayload {
     watching: bool,
     label: String,
     remaining: f64,
+}
+
+/// What every surface needs to draw the affection meter. `needed` is
+/// derived rather than stored, so the level curve can be retuned without
+/// migrating anyone's saved progress. `gained` is non-zero only on the
+/// award that crossed a threshold — that is the pet window's cue to play
+/// the level-up animation.
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct ProgressView {
+    level: u32,
+    xp: u32,
+    needed: u32,
+    total_xp: u64,
+    closes: u32,
+    pats: u32,
+    gained: u32,
+}
+
+impl ProgressView {
+    fn of(p: &Progress, gained: u32) -> Self {
+        Self {
+            level: p.level,
+            xp: p.xp,
+            needed: p.needed(),
+            total_xp: p.total_xp,
+            closes: p.closes,
+            pats: p.pats,
+            gained,
+        }
+    }
 }
 
 #[derive(Serialize)]
@@ -185,9 +212,62 @@ fn status(state: tauri::State<State>) -> StatusInfo {
     }
 }
 
+/* ------------------------------------------------------------------
+   affection
+------------------------------------------------------------------ */
+
+/// Banks XP, persists it, and tells every window. The single funnel for
+/// earning, so the saved file and the two surfaces can never disagree
+/// about the level. Awarding is deliberately server-side: the overlay
+/// asks the cat to be fed, it does not get to decide how much.
+fn bank_xp(app: &AppHandle, state: &State, amount: u32, kind: &str) -> ProgressView {
+    let (snap, gained, dir) = {
+        let mut guard = state.lock().unwrap();
+        match kind {
+            "close" => guard.progress.closes += 1,
+            "pat" => guard.progress.pats += 1,
+            _ => {}
+        }
+        let gained = guard.progress.award(amount);
+        if gained > 0 {
+            let level = guard.progress.level;
+            guard.note("level up", "", &format!("now level {level}"));
+        }
+        (guard.progress.clone(), gained, guard.dir.clone())
+    };
+
+    let _ = progress::save(&dir, &snap);
+    let view = ProgressView::of(&snap, gained);
+    let _ = app.emit("progress", view.clone());
+    view
+}
+
+#[tauri::command]
+fn get_progress(state: tauri::State<State>) -> ProgressView {
+    ProgressView::of(&state.lock().unwrap().progress, 0)
+}
+
+/// A pat from the overlay. Rate-limited here rather than in the
+/// overlay, because the overlay is the thing that would be spammed.
+#[tauri::command]
+fn award_pat(app: AppHandle, state: tauri::State<State>) -> ProgressView {
+    {
+        let mut guard = state.lock().unwrap();
+        let now = Instant::now();
+        if let Some(last) = guard.last_pat {
+            if now.duration_since(last) < PAT_COOLDOWN {
+                return ProgressView::of(&guard.progress, 0);
+            }
+        }
+        guard.last_pat = Some(now);
+    }
+    let inner: State = state.inner().clone();
+    bank_xp(&app, &inner, progress::XP_PAT, "pat")
+}
+
 /// The overlay asks for this when its countdown reaches zero.
 #[tauri::command]
-fn act(state: tauri::State<State>, target: Snapshot) -> win::ActResult {
+fn act(app: AppHandle, state: tauri::State<State>, target: Snapshot) -> win::ActResult {
     let guard = state.lock().unwrap();
     if guard.cfg.mode != "close" {
         return win::ActResult {
@@ -202,13 +282,22 @@ fn act(state: tauri::State<State>, target: Snapshot) -> win::ActResult {
 
     let result = win::close_target(&target, &action);
 
-    let mut guard = state.lock().unwrap();
-    guard.cooldown_until = Some(Instant::now() + COOLDOWN);
-    guard.note(
-        if result.acted { "closed" } else { "skipped" },
-        "",
-        &result.reason,
-    );
+    {
+        let mut guard = state.lock().unwrap();
+        guard.cooldown_until = Some(Instant::now() + COOLDOWN);
+        guard.note(
+            if result.acted { "closed" } else { "skipped" },
+            "",
+            &result.reason,
+        );
+    }
+
+    // only a window that actually closed is worth anything — a skipped
+    // or refused close would otherwise pay out for doing nothing
+    if result.acted {
+        let inner: State = state.inner().clone();
+        bank_xp(&app, &inner, progress::XP_CLOSE, "close");
+    }
     result
 }
 
@@ -227,31 +316,45 @@ fn cancel_snooze(state: tauri::State<State>) {
     guard.snooze_until = None;
 }
 
-/// The overlay is click-through except while the pointer is on the cat.
+/// Moves the small, always-interactive "hitbox" window to sit exactly
+/// over the cat's current position (x, y, width, height in the "pet"
+/// window's own local coordinates). Called on load, whenever the cat
+/// moves, and whenever its size changes in settings.
+///
+/// Two things were tried before this and both failed on Windows:
+///
+///   - `set_ignore_cursor_events` is a blunt WS_EX_TRANSPARENT toggle:
+///     once set, the window receives NO mouse input at all, including
+///     mousemove, so there is no way to detect "the cursor just
+///     reached the cat" to turn it back off.
+///   - Subclassing the overlay's WndProc to answer WM_NCHITTEST
+///     per-pixel *looked* right and is the standard Win32 technique for
+///     this — but WebView2 does not consult it: a click was measurably
+///     still delivered to the webview even on pixels the hit-test
+///     handler had just answered HTTRANSPARENT for (confirmed by
+///     logging both sides of that exact click).
+///
+/// So instead: the "pet" window is permanently click-through, and a
+/// second, genuinely small window sits on top of it wherever the cat
+/// currently is. A small ordinary window blocking clicks only within
+/// its own bounds needs no tricks at all — that's just how windows work.
 #[tauri::command]
-fn set_interactive(app: AppHandle, on: bool) {
-    if let Some(w) = app.get_webview_window("pet") {
-        let _ = w.set_ignore_cursor_events(!on);
+fn set_hitbox(app: AppHandle, x: i32, y: i32, w: i32, h: i32) {
+    let Some(hitbox) = app.get_webview_window("hitbox") else { return };
+    if w <= 0 || h <= 0 {
+        // park it off-screen rather than trying to shrink to nothing,
+        // which some window managers refuse or clamp oddly
+        let _ = hitbox.set_position(PhysicalPosition::new(-10_000, -10_000));
+        return;
     }
-}
-
-/// Updates the cat's screen bounding box so the native cursor tracker
-/// can reliably enable mouse interactivity before the mouse clicks the window.
-#[tauri::command]
-fn update_cat_box(
-    hit_box: tauri::State<Arc<HitBox>>,
-    left: i32,
-    top: i32,
-    right: i32,
-    bottom: i32,
-    dragging: bool,
-) {
-    hit_box.left.store(left, Ordering::Relaxed);
-    hit_box.top.store(top, Ordering::Relaxed);
-    hit_box.right.store(right, Ordering::Relaxed);
-    hit_box.bottom.store(bottom, Ordering::Relaxed);
-    hit_box.active.store(true, Ordering::Relaxed);
-    hit_box.dragging.store(dragging, Ordering::Relaxed);
+    let (ox, oy, _, _) = work_area();
+    let _ = hitbox.set_position(PhysicalPosition::new(ox + x, oy + y));
+    let _ = hitbox.set_size(PhysicalSize::new(w.max(1), h.max(1)));
+    #[cfg(debug_assertions)]
+    eprintln!(
+        "[badcat] hitbox   screen=({},{},{},{})",
+        ox + x, oy + y, ox + x + w, oy + y + h
+    );
 }
 
 #[tauri::command]
@@ -353,11 +456,9 @@ fn make_non_activating(window: &tauri::WebviewWindow) {
 fn build_overlay(app: &AppHandle) -> tauri::Result<()> {
     // The overlay covers the *entire* work area, not just a bottom strip —
     // dragging the cat upward and letting gravity drop it needs the room.
-    // It is click-through everywhere except the cat itself (toggled by
-    // set_interactive), so this doesn't intercept clicks meant for
-    // whatever is running underneath.
+    // It is permanently click-through: see build_hitbox_window() below for
+    // how clicks actually reach the cat.
     let (x, y, w, h) = work_area();
-    eprintln!("[badcat] work_area is: x={x}, y={y}, w={w}, h={h}");
     let window = WebviewWindowBuilder::new(app, "pet", WebviewUrl::App("pet.html".into()))
         .title("Bad Cat")
         .transparent(true)
@@ -378,10 +479,59 @@ fn build_overlay(app: &AppHandle) -> tauri::Result<()> {
     make_non_activating(&window);
 
     window.show()?;
-    let is_vis = window.is_visible().unwrap_or(false);
-    let size = window.inner_size().unwrap_or_default();
-    let pos = window.outer_position().unwrap_or_default();
-    eprintln!("[badcat] overlay window shown! is_visible={is_vis}, size={:?}, pos={:?}", size, pos);
+    Ok(())
+}
+
+/* -------------------------------------------------------------------
+   click-through, done with a second small window
+   ---------------------------------------------------------------
+   Two things were tried before this and both failed on Windows:
+
+     - set_ignore_cursor_events is a blunt WS_EX_TRANSPARENT toggle:
+       once set, the window receives NO mouse input at all, including
+       mousemove, so there is no way to detect "the cursor just
+       reached the cat" to turn it back off from the JS side.
+     - Subclassing the overlay's WndProc to answer WM_NCHITTEST
+       per-pixel is the standard Win32 technique for exactly this and
+       *looked* right — but WebView2 does not consult it. A click was
+       measurably still delivered to the webview on a pixel the
+       hit-test handler had, in the same instant, answered
+       HTTRANSPARENT for (confirmed by logging both sides of one
+       click). Whatever WebView2 uses to route input to its own
+       composited surface does not go through the parent's NCHITTEST
+       answer.
+
+   So instead: the "pet" window above is permanently click-through
+   (set_ignore_cursor_events(true), never toggled), and this second
+   "hitbox" window is small, ordinary, and always fully interactive —
+   no transparency trick needed at all, because a normal small window
+   only ever blocks clicks within its own bounds. Rust moves it to sit
+   exactly over the cat (see set_hitbox()); its own tiny page just
+   relays mousedown/mousemove/mouseup to "pet", which owns all the
+   actual drag/drop logic and rendering.
+------------------------------------------------------------------- */
+fn build_hitbox_window(app: &AppHandle) -> tauri::Result<()> {
+    let window = WebviewWindowBuilder::new(app, "hitbox", WebviewUrl::App("hit.html".into()))
+        .title("Bad Cat hitbox")
+        .transparent(true)
+        .decorations(false)
+        .always_on_top(true)
+        .skip_taskbar(true)
+        .resizable(false)
+        .shadow(false)
+        .focused(false)
+        .visible(false)
+        .build()?;
+
+    // starts with zero footprint, parked off-screen, until pet.js's
+    // first set_hitbox() call places it over the cat
+    window.set_position(PhysicalPosition::new(-10_000, -10_000))?;
+    window.set_size(PhysicalSize::new(1, 1))?;
+
+    #[cfg(windows)]
+    make_non_activating(&window);
+
+    window.show()?;
     Ok(())
 }
 
@@ -401,55 +551,6 @@ fn show_settings(app: &AppHandle) {
     if let Ok(w) = built {
         let _ = w.set_focus();
     }
-}
-
-/* ------------------------------------------------------------------
-   cursor tracker — solves the Windows click-through deadlock
------------------------------------------------------------------- */
-
-fn spawn_cursor_tracker(app: AppHandle, hit_box: Arc<HitBox>) {
-    std::thread::spawn(move || {
-        let mut is_interactive = false;
-        loop {
-            std::thread::sleep(Duration::from_millis(25));
-            if !hit_box.active.load(Ordering::Relaxed) {
-                continue;
-            }
-            let dragging = hit_box.dragging.load(Ordering::Relaxed);
-            let hover = if dragging {
-                true
-            } else {
-                #[cfg(windows)]
-                {
-                    use windows::Win32::Foundation::POINT;
-                    use windows::Win32::UI::WindowsAndMessaging::GetCursorPos;
-                    let mut pt = POINT::default();
-                    if unsafe { GetCursorPos(&mut pt) }.is_ok() {
-                        let scale = app
-                            .get_webview_window("pet")
-                            .and_then(|w| w.scale_factor().ok())
-                            .unwrap_or(1.0);
-                        let l = (hit_box.left.load(Ordering::Relaxed) as f64 * scale) as i32;
-                        let t = (hit_box.top.load(Ordering::Relaxed) as f64 * scale) as i32;
-                        let r = (hit_box.right.load(Ordering::Relaxed) as f64 * scale) as i32;
-                        let b = (hit_box.bottom.load(Ordering::Relaxed) as f64 * scale) as i32;
-                        pt.x >= l && pt.x <= r && pt.y >= t && pt.y <= b
-                    } else {
-                        false
-                    }
-                }
-                #[cfg(not(windows))]
-                { false }
-            };
-
-            if hover != is_interactive {
-                if let Some(w) = app.get_webview_window("pet") {
-                    let _ = w.set_ignore_cursor_events(!hover);
-                    is_interactive = hover;
-                }
-            }
-        }
-    });
 }
 
 /* ------------------------------------------------------------------
@@ -680,7 +781,7 @@ pub fn run() {
                 .unwrap_or_else(|_| PathBuf::from("."));
             // check before loading: load() writes the defaults out on
             // first run, so asking afterwards always says "not first run"
-            let _first_run = !config::config_path(&dir).exists();
+            let first_run = !config::config_path(&dir).exists();
             let (cfg, notes) = config::load(&dir);
             #[cfg(debug_assertions)]
             eprintln!(
@@ -690,6 +791,13 @@ pub fn run() {
                 cfg.mode,
                 cfg.enabled,
                 if notes.is_empty() { String::new() } else { format!(" - {}", notes.join("; ")) }
+            );
+
+            let earned = progress::load(&dir);
+            #[cfg(debug_assertions)]
+            eprintln!(
+                "[badcat] progress level {} - {}/{} xp, {} closed, {} pats",
+                earned.level, earned.xp, earned.needed(), earned.closes, earned.pats
             );
 
             let state: State = Arc::new(Mutex::new(Shared {
@@ -703,32 +811,21 @@ pub fn run() {
                 remaining: 0.0,
                 trail: Vec::new(),
                 started: Instant::now(),
+                progress: earned,
+                last_pat: None,
             }));
             app.manage(state.clone());
 
-            let hit_box = Arc::new(HitBox::default());
-            app.manage(hit_box.clone());
-
-            eprintln!("[badcat] building overlay...");
             build_overlay(&handle)?;
-            eprintln!("[badcat] overlay built ok!");
-
-            eprintln!("[badcat] building tray...");
+            build_hitbox_window(&handle)?;
             build_tray(&handle, state.clone())?;
-            eprintln!("[badcat] tray built ok!");
-
-            eprintln!("[badcat] spawning cursor tracker...");
-            spawn_cursor_tracker(handle.clone(), hit_box);
-            eprintln!("[badcat] cursor tracker spawned ok!");
-
-            eprintln!("[badcat] spawning monitor...");
             spawn_monitor(handle.clone(), state);
-            eprintln!("[badcat] monitor spawned ok!");
 
-            // Show settings window on launch for immediate UI feedback and controls
-            show_settings(&handle);
+            // first run has nothing configured yet; --settings forces it
+            if first_run || std::env::args().any(|a| a == "--settings") {
+                show_settings(&handle);
+            }
 
-            eprintln!("[badcat] setup completed successfully!");
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -739,20 +836,28 @@ pub fn run() {
             act,
             snooze,
             cancel_snooze,
-            set_interactive,
-            update_cat_box,
+            set_hitbox,
             open_settings,
             set_cat_visible,
             preview_bust,
             preview_state,
+            get_progress,
+            award_pat,
             jslog
         ])
         .build(tauri::generate_context!())
         .expect("error building Bad Cat")
         .run(|_app, event| {
-            // a tray app outlives its windows
-            if let tauri::RunEvent::ExitRequested { api, .. } = event {
-                api.prevent_exit();
+            // A tray app outlives its windows: closing the settings window
+            // must not end the process. But Tauri raises ExitRequested for
+            // BOTH cases, so preventing it unconditionally also swallowed
+            // the tray's own Quit. `code` is what tells them apart — it is
+            // None when the last window closed, and Some(n) when something
+            // asked to exit deliberately via app.exit(n).
+            if let tauri::RunEvent::ExitRequested { api, code, .. } = event {
+                if code.is_none() {
+                    api.prevent_exit();
+                }
             }
         });
 }

@@ -25,7 +25,6 @@
   // this is the only way to see what went wrong, so keep it for real
   // failure paths (never for routine per-frame chatter).
   const log = (m) => invoke("jslog", { msg: String(m) }).catch(() => {});
-  log(">>> pet.js loading started! <<<");
   window.addEventListener("error", (e) => log("ERROR " + e.message + " @" + e.lineno));
 
   const pet = document.getElementById("pet");
@@ -42,14 +41,9 @@
   let sleepy = true;
   let baseSpeed = 1;
 
-  window.addEventListener("unhandledrejection", (e) => log("UNHANDLED REJECTION: " + e.reason));
-
   gsap.registerPlugin(MorphSVGPlugin);
-  log(">>> mounting rig to #petScene...");
   CatRig.mount(document.getElementById("petScene"));
-  log(">>> rig mounted. Calling Cat.init()...");
   Cat.init({ state: "sit", roam: false });   // we drive position ourselves
-  log(">>> Cat.init() completed successfully!");
 
   /* ---------------------------------------------------------------
      position — both axes live in #pet's own x/y (GSAP transform),
@@ -68,12 +62,7 @@
   const clampX = (v) => Math.min(maxX(), Math.max(EDGE, v));
   const clampY = (v) => Math.min(floorY(), Math.max(minY(), v));
 
-  function setXY(nx, ny) {
-    x = nx;
-    y = ny;
-    gsap.set(pet, { x, y });
-    syncCatBox(dragging);
-  }
+  function setXY(nx, ny) { x = nx; y = ny; gsap.set(pet, { x, y }); }
   function setX(nx) { setXY(nx, y); }
 
   function applyCat(cat) {
@@ -181,20 +170,18 @@
     bubbleTween = gsap.fromTo(bubble,
       { opacity: 0, y: 8, scale: 0.94 },
       { opacity: 1, y: 0, scale: 1, duration: 0.28, ease: "back.out(2)", transformOrigin: "50% 100%" });
-    syncCatBox(dragging);
   }
 
   function updateBubble(count, kind) {
     bubbleCount.textContent = count || "";
     if (kind) { bubble.className = "bubble is-" + kind; }
-    syncCatBox(dragging);
   }
 
   function hideBubble() {
     if (bubbleTween) { bubbleTween.kill(); }
     bubbleTween = gsap.to(bubble, {
       opacity: 0, y: 6, duration: 0.22, ease: "power2.in",
-      onComplete() { bubble.hidden = true; syncCatBox(dragging); }
+      onComplete() { bubble.hidden = true; }
     });
   }
 
@@ -229,13 +216,6 @@
     const mine = interrupt();
 
     Cat.setSpeed(baseSpeed);
-
-    // Startled notice reaction: perk upright, pop `!`, stunned pause, burst into 💢
-    if (typeof Cat.alert === "function") {
-      await Cat.alert();
-      if (stale(mine)) { abandon(); return; }
-    }
-
     Cat.setState("angry");                       // the fast four-beat approach
 
     const nagging = payload.mode !== "close";
@@ -299,6 +279,9 @@
     if (result && result.acted) {
       updateBubble("closed", "done");
       Cat.setState("pat");                        // pleased with itself
+      // act() banks the XP for a successful close on the Rust side; the
+      // "progress" event that follows is what plays the burst, so there
+      // is nothing to award from here
     } else {
       updateBubble(result.reason || "let it go", "hint");
       Cat.setState("sit");
@@ -329,89 +312,70 @@
   }
 
   /* ---------------------------------------------------------------
-     pointer: accurate hit testing, full 2D drag & realistic gravity
+     pointer: click-through unless you are actually on the cat.
+     Drag moves it freely in both axes; letting go above the floor
+     drops it — see fallToFloor().
+     ---------------------------------------------------------------
+     This window (the "pet" overlay) is permanently click-through and
+     never receives mouse events at all — two other approaches to a
+     hover-reveal region were tried and both failed on Windows
+     (set_ignore_cursor_events is all-or-nothing with no way to detect
+     "the cursor just arrived"; a WM_NCHITTEST subclass answered
+     per-pixel correctly but WebView2 doesn't consult it for input
+     routing). The actual clicks come from a separate small "hitbox"
+     window Rust keeps parked over the cat — see syncHitbox() below and
+     hit.js — relayed here as "hit-down" / "hit-move" / "hit-up".
   --------------------------------------------------------------- */
-  let interactive = false;
   let dragging = false;
   let falling = false;
   let dragDx = 0, dragDy = 0;
   let moved = 0;
 
-  function isFacingLeft() {
-    if (typeof Cat.getFacing === "function") {
-      return Cat.getFacing() < 0;
-    }
-    const catEl = document.getElementById("cat");
-    if (!catEl) { return false; }
-    return (gsap.getProperty(catEl, "scaleX") || 1) < 0;
-  }
-
-  function syncCatBox(isDragging) {
+  function hitRect() {
+    // the cat occupies roughly x 30..185, y 15..140 of its design box
     const u = unit;
-    const facingLeft = isFacingLeft();
-    const leftPad = (facingLeft ? 15 : 30) * u - 14;
-    const rightPad = (facingLeft ? 170 : 185) * u + 14;
-    const topPad = 10 * u - 14;
-    const bottomPad = 142 * u + 10;
-
-    let bLeft = x + leftPad;
-    let bTop = y + topPad;
-    let bRight = x + rightPad;
-    let bBottom = y + bottomPad;
-
-    if (!bubble.hidden && bubble.style.display !== "none" && (gsap.getProperty(bubble, "opacity") || 1) > 0.1) {
+    let left = x + 30 * u, top = y + 15 * u, right = x + 185 * u, bottom = y + 140 * u;
+    if (!bubble.hidden) {
       const b = bubble.getBoundingClientRect();
-      bLeft = Math.min(bLeft, b.left - 10);
-      bTop = Math.min(bTop, b.top - 10);
-      bRight = Math.max(bRight, b.right + 10);
-      bBottom = Math.max(bBottom, b.bottom + 10);
+      left = Math.min(left, b.left);
+      top = Math.min(top, b.top);
+      right = Math.max(right, b.right);
+      bottom = Math.max(bottom, b.bottom);
     }
-
-    invoke("update_cat_box", {
-      left: Math.round(bLeft),
-      top: Math.round(bTop),
-      right: Math.round(bRight),
-      bottom: Math.round(bBottom),
-      dragging: Boolean(isDragging)
-    }).catch(() => {});
+    return { left, top, right, bottom };
   }
 
-  function hot(cx, cy) {
-    const u = unit;
-    const facingLeft = isFacingLeft();
-    
-    // Facing left: design X spans [15, 170]. Facing right: spans [30, 185].
-    // Add a grab buffer for responsive clicking
-    const leftPad = (facingLeft ? 15 : 30) * u - 12;
-    const rightPad = (facingLeft ? 170 : 185) * u + 12;
-    const topPad = 10 * u - 12;
-    const bottomPad = 142 * u + 10;
+  /* Everything crossing into Rust is in PHYSICAL pixels — work_area(),
+     PhysicalPosition and PhysicalSize all are — while everything in
+     here is in the webview's LOGICAL CSS pixels. On any display scaled
+     past 100% the two differ by exactly this factor, so the conversion
+     has to happen at the boundary in both directions. Getting this
+     wrong does not fail loudly: the hitbox simply lands at a fraction
+     of the cat's position (0.8x at 125%), drifting further off the
+     further right the cat walks, so clicks and drags quietly never
+     reach it. */
+  const dpr = () => window.devicePixelRatio || 1;
 
-    const left = x + leftPad;
-    const right = x + rightPad;
-    const top = y + topPad;
-    const bottom = y + bottomPad;
-
-    if (cx >= left && cx <= right && cy >= top && cy <= bottom) {
-      return true;
-    }
-
-    if (!bubble.hidden && bubble.style.display !== "none" && (gsap.getProperty(bubble, "opacity") || 1) > 0.1) {
-      const b = bubble.getBoundingClientRect();
-      if (cx >= b.left - 8 && cx <= b.right + 8 && cy >= b.top - 8 && cy <= b.bottom + 8) {
-        return true;
-      }
-    }
-    return false;
+  let lastSyncedKey = "";
+  function syncHitbox() {
+    const r = hitRect();
+    const s = dpr();
+    const px = {
+      x: Math.round(r.left * s), y: Math.round(r.top * s),
+      w: Math.round((r.right - r.left) * s), h: Math.round((r.bottom - r.top) * s)
+    };
+    const key = px.x + "," + px.y + "," + px.w + "," + px.h;
+    if (key === lastSyncedKey) { return; }
+    lastSyncedKey = key;
+    invoke("set_hitbox", px).catch(() => {});
   }
+  setInterval(syncHitbox, 80);
 
-  function setInteractive(on) {
-    if (on === interactive) { return; }
-    interactive = on;
-    invoke("set_interactive", { on }).catch(() => {});
-  }
-
-  /* Gravity, cartoon-weight: kinematic acceleration g = 4200 px/s^2 */
+  /* Gravity, cartoon-weight: position falls off as roughly time², which
+     is what "power2.in" already approximates, so a plain eased tween
+     reads as a real drop without hand-rolling a physics step. Duration
+     scales with drop height so a nudge off the floor is a flick and a
+     drop from the top of the screen actually takes a beat. */
   const GRAVITY_PX_S2 = 4200;
 
   function fallToFloor(mine) {
@@ -420,47 +384,37 @@
       const dropHeight = dest - y;
 
       if (dropHeight <= 2) {
-        land(0.3);
+        // already essentially on the ground — just a tiny settle, no fall
+        land(0.4);
         resolve();
         return;
       }
 
       falling = true;
-      // Exact kinematic duration t = sqrt(2h / g), clamped cleanly
-      const duration = Math.min(1.0, Math.max(0.05, Math.sqrt((2 * dropHeight) / GRAVITY_PX_S2)));
+      const duration = Math.min(1.1, Math.max(0.14, Math.sqrt((2 * dropHeight) / GRAVITY_PX_S2)));
       const tween = gsap.to(pet, {
         y: dest,
-        duration: duration,
+        duration,
         ease: "power2.in",
-        onUpdate() {
-          y = gsap.getProperty(pet, "y");
-          syncCatBox(false);
-        },
+        onUpdate() { y = gsap.getProperty(pet, "y"); },
         onComplete() {
           falling = false;
           y = dest;
-          syncCatBox(false);
-          land(Math.min(1, dropHeight / 240));
+          land(Math.min(1, dropHeight / 240));   // harder landings squash more
           resolve();
         }
       });
-
+      // a drag or another fall starting mid-air takes over cleanly
       const poll = setInterval(() => {
         if (stale(mine)) {
-          clearInterval(poll);
-          tween.kill();
-          falling = false;
-          y = gsap.getProperty(pet, "y");
-          syncCatBox(false);
-          resolve();
+          clearInterval(poll); tween.kill(); falling = false;
+          y = gsap.getProperty(pet, "y"); resolve();
         }
-      }, 60);
-
+      }, 80);
       tween.eventCallback("onComplete", function () {
         clearInterval(poll);
         falling = false;
         y = dest;
-        syncCatBox(false);
         land(Math.min(1, dropHeight / 240));
         resolve();
       });
@@ -468,55 +422,57 @@
   }
 
   function land(strength) {
-    // 2D volume-preserving squash and elastic spring recovery
-    const squashY = Math.max(0.72, 1 - 0.24 * strength);
-    const squashX = Math.min(1.28, 1 + 0.20 * strength);
+    const squashY = 1 - 0.22 * strength;
+    const squashX = 1 + 0.16 * strength;
     gsap.killTweensOf(pet, "scaleX,scaleY");
     gsap.set(pet, { transformOrigin: "50% 100%" });
     gsap.timeline()
       .to(pet, { scaleY: squashY, scaleX: squashX, duration: 0.07, ease: "power2.out" })
-      .to(pet, { scaleY: 1, scaleX: 1, duration: 0.45, ease: "elastic.out(1.2, 0.45)" });
+      .to(pet, { scaleY: 1, scaleX: 1, duration: 0.42, ease: "elastic.out(1, 0.5)" });
   }
 
-  function onPointerMove(e) {
-    if (dragging) {
-      moved += 1;
-      setXY(clampX(e.clientX - dragDx), clampY(e.clientY - dragDy));
-      return;
-    }
-    setInteractive(hot(e.clientX, e.clientY));
-  }
-
-  function onPointerDown(e) {
-    if (!hot(e.clientX, e.clientY)) {
-      return;
-    }
+  /* The clicks themselves arrive from the "hitbox" window, a separate
+     small always-interactive window Rust keeps parked over the cat —
+     see set_hitbox()/hit.js for why this is a second window rather
+     than anything done in this one. Coordinates are OS-absolute screen
+     pixels; treated as this window's local coordinates directly, which
+     holds as long as the overlay sits at the primary work area's
+     origin (true for the single/primary-monitor case this targets). */
+  listen("hit-down", (e) => {
+    // hit.js sends physical screen pixels; this window thinks in logical
+    const s = dpr();
+    const cx = e.payload.x / s, cy = e.payload.y / s;
+    log("hit-down phys=" + e.payload.x + "," + e.payload.y +
+        " logical=" + Math.round(cx) + "," + Math.round(cy) +
+        " cat=" + Math.round(x) + "," + Math.round(y));
     dragging = true;
     moved = 0;
-    dragDx = e.clientX - x;
-    dragDy = e.clientY - y;
-
-    // Reset any active landing squash/stretch
-    gsap.killTweensOf(pet, "scaleX,scaleY");
-    gsap.to(pet, { scaleX: 1, scaleY: 1, duration: 0.1 });
-
-    syncCatBox(true);
-
+    dragDx = cx - x;
+    dragDy = cy - y;
     interrupt();
     abandon();                                    // picking it up cancels any bust in flight
     Cat.setState("bored");                        // dangling in mid-air
-  }
+  });
 
-  function onPointerUp() {
+  listen("hit-move", (e) => {
+    if (!dragging) { return; }
+    const s = dpr();
+    moved += 1;
+    setXY(clampX(e.payload.x / s - dragDx), clampY(e.payload.y / s - dragDy));
+  });
+
+  listen("hit-up", () => {
     if (!dragging) { return; }
     dragging = false;
-    syncCatBox(false);
 
     if (moved < 3) {
       // a click, not a drag
       if (alerting) { cancelToSnooze(); return; }
       const mine = interrupt();
       Cat.setState("pat");
+      // Rust rate-limits this, so leaning on the cat pays out at most
+      // once every few seconds; the burst rides in on the event below
+      invoke("award_pat", {}).catch(() => {});
       wait(3, mine).then(() => { if (!stale(mine)) { idleLoop(); } });
       return;
     }
@@ -527,16 +483,7 @@
       Cat.setState("sit");
       wait(0.6, mine).then(() => { if (!stale(mine)) { idleLoop(); } });
     });
-  }
-
-  window.addEventListener("pointermove", onPointerMove);
-  window.addEventListener("mousemove", onPointerMove);
-  window.addEventListener("pointerdown", onPointerDown);
-  window.addEventListener("mousedown", onPointerDown);
-  window.addEventListener("pointerup", onPointerUp);
-  window.addEventListener("mouseup", onPointerUp);
-
-  window.addEventListener("dblclick", () => { invoke("open_settings", {}).catch(() => {}); });
+  });
 
   window.addEventListener("resize", () => {
     if (!dragging && !falling) { setXY(clampX(x), floorY()); }
@@ -562,13 +509,23 @@
 
   listen("config-changed", (e) => applyCat(e.payload && e.payload.cat));
 
+  /* Every XP award broadcasts, whether it levelled or not; `gained` is
+     the only thing that makes it a moment. Deliberately does NOT touch
+     the state machine — the burst plays over whatever the cat is doing,
+     so a level earned mid-walk doesn't stop it walking. */
+  listen("progress", (e) => {
+    const p = e.payload;
+    if (!p || !p.gained) { return; }
+    // the badge names the level itself, so no bubble on top of it
+    try { Cat.levelUp(p.level); } catch (err) { log("levelUp failed: " + err); }
+  });
+
   // settings can drive the cat directly so you can see each pose
   listen("preview-state", (e) => {
     const mine = interrupt();
     alerting = false;
     hideBubble();
     if (e.payload === "swipe") { Cat.swipe(); }
-    else if (e.payload === "alert") { Cat.alert(); }
     else { Cat.setState(e.payload); }
     wait(6, mine).then(() => { if (!stale(mine)) { idleLoop(); } });
   });
@@ -576,15 +533,11 @@
   /* ---------------------------------------------------------------
      go
   --------------------------------------------------------------- */
-  log(">>> window size: " + window.innerWidth + "x" + window.innerHeight + ", placing cat at y=" + floorY());
   setXY(Math.round((window.innerWidth - boxW) / 2), floorY());
-  log(">>> setXY placed cat at x=" + Math.round((window.innerWidth - boxW) / 2) + ", y=" + floorY());
+  syncHitbox();                                   // don't wait on the first poll tick to be grabbable
 
   invoke("get_config", {})
-    .then((cfg) => {
-      applyCat(cfg && cfg.cat);
-      syncCatBox(false);
-    })
+    .then((cfg) => applyCat(cfg && cfg.cat))
     .catch(() => {});
 
   idleLoop();

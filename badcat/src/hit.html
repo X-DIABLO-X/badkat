@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'" />
+<title>Bad Cat hitbox</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    cursor: default;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+</style>
+</head>
+<body>
+<!--
+  This window has no visible content on purpose: it exists only to
+  claim a small, ordinary, always-interactive rectangle that Rust moves
+  to sit exactly over the cat (see set_hitbox() in main.rs). The actual
+  sprite is drawn by the "pet" window, which stays permanently
+  click-through. See hit.js for why this two-window split exists at all.
+-->
+<script src="hit.js"></script>
+</body>
+</html>

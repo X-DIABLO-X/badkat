@@ -26,6 +26,9 @@
   var heartEls = [];
   var angerEls = [];
   var zzzEls = [];
+  var sparkEls = [];
+  var dotEls = [];
+  var streakEls = [];
   var LEG_KEYS = ["fn", "ff", "bn", "bf"];
 
   function collect() {
@@ -45,21 +48,25 @@
       mouth: $("mouth"),
       zzz: $("zzz"),
       anger: $("anger"),
-      alert: $("alert"),
-      alertStem: $("alert") ? $("alert").querySelector(".alert-stem") : null,
-      alertDot: $("alert") ? $("alert").querySelector(".alert-dot") : null,
+      pawprint: $("pawprint"),
+      levelup: $("levelup"),
+      lvlBadge: $("lvlBadge"),
+      lvlPill: $("lvlPill"),
+      lvlText: $("lvlText"),
+      lvlArrow: $("lvlArrow"),
       hearts: $("hearts"),
       legs: { fn: $("legFN"), ff: $("legFF"), bn: $("legBN"), bf: $("legBF") }
     };
-    var missing = Object.keys(el).filter(function (k) {
-      return k !== "legs" && k !== "alert" && k !== "alertStem" && k !== "alertDot" && !el[k];
-    });
+    var missing = Object.keys(el).filter(function (k) { return k !== "legs" && !el[k]; });
     if (missing.length) {
       throw new Error("cat.js: rig not mounted, missing #" + missing.join(", #"));
     }
     heartEls = Array.prototype.slice.call(el.hearts.querySelectorAll(".heart"));
     angerEls = Array.prototype.slice.call(el.anger.querySelectorAll(".anger-mark"));
     zzzEls = Array.prototype.slice.call(el.zzz.querySelectorAll(".z"));
+    sparkEls = Array.prototype.slice.call(el.levelup.querySelectorAll(".lvl-spark"));
+    dotEls = Array.prototype.slice.call(el.levelup.querySelectorAll(".lvl-dot"));
+    streakEls = Array.prototype.slice.call(el.levelup.querySelectorAll(".streak"));
   }
 
   /* ---------------------------------------------------------------
@@ -86,6 +93,12 @@
   var loop = null;        // per-state idle timeline
   var roam = null;        // walk-across-the-floor timeline
   var props = null;       // Zzz / hearts timeline
+  var poseTl = null;      // the in-flight pose morph
+  var actionTl = null;    // a one-shot such as swipe()
+  /* Bumped by every state change and every one-shot. Deferred callbacks
+     capture it and bail if it has moved on, which is what stops a
+     superseded pose from starting its idle loop late — see setState(). */
+  var generation = 0;
   var blinkCall = null;
   var twitchCall = null;
   var speed = 1;
@@ -121,13 +134,23 @@
     if (loop) { loop.kill(); loop = null; }
     if (roam) { roam.kill(); roam = null; }
     if (props) { props.kill(); props = null; }
-    var killTargets = [el.body, el.tail, el.head, el.earL, el.earR,
-      el.eyeL, el.eyeR, el.mouth, el.bodyGroup, el.headBob, el.shadow, el.anger];
-    if (el.alert) { killTargets.push(el.alert); }
-    gsap.killTweensOf(killTargets);
+    /* These two matter as much as the loops. killTweensOf() below stops
+       the individual morphs, but a timeline whose children are dead
+       still runs out its own duration and still fires its onComplete —
+       which is how a superseded pose used to start the previous state's
+       walk cycle underneath the new one's body, leaving the cat sitting
+       and walking at the same time. */
+    if (poseTl) { poseTl.kill(); poseTl = null; }
+    if (actionTl) { actionTl.kill(); actionTl = null; }
+    gsap.killTweensOf([el.body, el.tail, el.head, el.earL, el.earR,
+      el.eyeL, el.eyeR, el.mouth, el.bodyGroup, el.headBob, el.shadow, el.anger, el.pawprint]);
     gsap.killTweensOf(heartEls);
     gsap.killTweensOf(angerEls);
     gsap.killTweensOf(zzzEls);
+    // the burst borrows bodyGroup/headBob, so a pose change has to take
+    // them back — otherwise a stray gold ring is left sitting on screen
+    gsap.killTweensOf(sparkEls.concat(dotEls, streakEls));
+    gsap.killTweensOf([el.levelup, el.lvlBadge]);
     LEG_KEYS.forEach(function (k) { gsap.killTweensOf(el.legs[k]); });
   }
 
@@ -441,28 +464,159 @@
     twitchCall = gsap.delayedCall(rand(4, 11), twitch);
   }
 
-  /* Helper to determine current horizontal facing (-1 for left, 1 for right) */
-  function getFacing() {
-    return (gsap.getProperty(el.cat, "scaleX") || 1) < 0 ? -1 : 1;
-  }
-
   /* ---------------------------------------------------------------
      props
   --------------------------------------------------------------- */
-  function startZzz() {
+  /* Which way the rig is currently mirrored, as a sign. Read from the
+     live transform so it is right even mid-turn. */
+  function facingSign() {
+    return (gsap.getProperty(el.cat, "scaleX") || 1) < 0 ? -1 : 1;
+  }
+
+  /* The Zzz are the only GLYPHS in the rig, and glyphs are the only
+     thing a mirror breaks: turning the cat left sets scaleX -1 on #cat,
+     which is exactly right for every body part but renders the "z"
+     backwards. So each z carries a counter-flip of its own — scaleX
+     scaled by the facing sign, which multiplies out to +1 on screen —
+     and scaleY is animated separately so the pop-in still grows.
+     Counter-flipping per glyph rather than on the #zzz group keeps the
+     drift heading away from the head in both directions. */
+  function startZzz(dir) {
     var tl = gsap.timeline({ repeat: -1 });
-    var flip = getFacing();
     zzzEls.forEach(function (z, i) {
       gsap.set(z, { attr: { x: 172, y: 84 }, transformOrigin: "50% 50%" });
       tl.fromTo(z,
-        { x: 0, y: 0, opacity: 0, scaleX: 0.55 * flip, scaleY: 0.55, rotation: -8 },
+        { x: 0, y: 0, opacity: 0, scaleX: 0.55 * dir, scaleY: 0.55, rotation: -8 },
         {
-          x: 16, y: -30, opacity: 0, scaleX: 1.25 * flip, scaleY: 1.25, rotation: 10, duration: 2.6,
+          x: 16, y: -30, opacity: 0, scaleX: 1.25 * dir, scaleY: 1.25, rotation: 10,
+          duration: 2.6,
           ease: "sine.out", keyframes: { opacity: [0, 0.85, 0.85, 0] }
         },
         i * 0.85);
     });
     tl.to({}, { duration: 0.6 });
+    return tl;
+  }
+
+  /* ---------------------------------------------------------------
+     level up — a one-shot celebration, on top of whatever pose is
+     running rather than replacing it, so it can fire mid-pat or
+     mid-walk without stealing the state machine. Returns the timeline
+     so callers can await the end of the moment.
+  --------------------------------------------------------------- */
+  /* Sparkle and dot placements, in units around the badge's centre.
+     Hand-placed rather than spaced evenly on a ring: an even ring reads
+     as a machine-made halo, where a scatter reads as a sprinkle. */
+  var LVL_SPARKS = [
+    { x: -15, y: 5.5, s: 1.0 }, { x: 14.5, y: 4.5, s: 0.78 },
+    { x: 7.5, y: -12.5, s: 1.05 }, { x: -9, y: -10, s: 0.66 }
+  ];
+  var LVL_DOTS = [
+    { x: -19.5, y: -6.5, s: 1 }, { x: 18.5, y: -3, s: 0.82 },
+    { x: -12.5, y: 13, s: 0.72 }, { x: 11, y: 12.5, s: 0.62 }
+  ];
+  var LVL_STREAKS = [
+    { x: -13, h: 1.35, d: 0 }, { x: -4.5, h: 1.75, d: 0.06 },
+    { x: 6, h: 1.15, d: 0.12 }, { x: 15, h: 1.5, d: 0.04 }
+  ];
+
+  /* Lays out the pill so it fits whatever the level number is: the text
+     is measured, then the pill and the arrow are placed around it. A
+     fixed-width pill would sit loose around "Lv. 5" and clip "Lv. 12". */
+  function fitBadge(level) {
+    var PAD = 6.5, GAP = 3.6, ARROW = 7;
+    el.lvlText.textContent = "Lv. " + level;
+    var w = 26;
+    try { w = el.lvlText.getComputedTextLength() || w; } catch (_) {}
+    var content = w + GAP + ARROW;
+    var left = -content / 2;
+    gsap.set(el.lvlText, { attr: { x: left + w / 2, y: 0 } });
+    gsap.set(el.lvlArrow, { x: left + w + GAP + ARROW / 2, y: 0 });
+    gsap.set(el.lvlPill, {
+      attr: { x: left - PAD, width: content + PAD * 2, y: -7.6, height: 15.2, rx: 7.6 }
+    });
+  }
+
+  function levelUp(level) {
+    if (!el.levelup) { return gsap.timeline(); }
+    var pose = S.POSES[current] || S.POSES.sit;
+    /* Clear of the ears, which reach to about -35 from headPos: any
+       closer and the pill sits on the cat's head instead of floating
+       over it. This does put the badge above the 150-unit design box in
+       the shorter poses, which is fine — #petScene is overflow:visible
+       and the overlay window is the whole work area, so there is real
+       screen above the cat to render into. */
+    var cx = pose.headPos.x;
+    var cy = pose.headPos.y - 52;
+    var dir = facingSign();
+
+    gsap.killTweensOf(sparkEls.concat(dotEls, streakEls));
+    gsap.killTweensOf([el.levelup, el.lvlBadge]);
+    // the group rides inside #cat, which is mirrored when facing left —
+    // undo that here or the badge text comes out backwards
+    gsap.set(el.levelup, { x: cx, y: cy, scaleX: dir, opacity: 1, transformOrigin: "50% 50%" });
+    fitBadge(level === undefined ? "?" : level);
+
+    var tl = gsap.timeline({
+      onComplete: function () { gsap.set(el.levelup, { opacity: 0 }); }
+    });
+
+    // streaks first, rising and gone before the badge has finished
+    // arriving — they read as the lift that carried it up
+    streakEls.forEach(function (s, i) {
+      var cfg = LVL_STREAKS[i % LVL_STREAKS.length];
+      tl.fromTo(s,
+        { x: cfg.x, y: 10, scaleY: cfg.h * 0.5, opacity: 0, transformOrigin: "50% 50%" },
+        {
+          y: -12, scaleY: cfg.h, duration: 0.5, ease: "power2.out",
+          keyframes: { opacity: [0, 0.35, 0] }
+        }, cfg.d);
+    });
+
+    // the badge: overshoots up, settles, holds, then drifts away
+    tl.fromTo(el.lvlBadge,
+      { y: 7, scale: 0.55, opacity: 0, transformOrigin: "50% 50%" },
+      { y: 0, scale: 1, opacity: 1, duration: 0.34, ease: "back.out(2.4)" }, 0.05);
+    tl.to(el.lvlBadge, { y: -7, opacity: 0, duration: 0.42, ease: "power2.in" }, 1.5);
+
+    // sparkles twinkle in around it, each on its own beat
+    sparkEls.forEach(function (s, i) {
+      var cfg = LVL_SPARKS[i % LVL_SPARKS.length];
+      tl.fromTo(s,
+        { x: cfg.x, y: cfg.y + 3, scale: 0, rotation: -35, opacity: 0, transformOrigin: "50% 50%" },
+        {
+          y: cfg.y, scale: cfg.s, rotation: 0, duration: 0.9, ease: "power2.out",
+          keyframes: { opacity: [0, 1, 1, 0] }
+        }, 0.16 + i * 0.09);
+    });
+
+    dotEls.forEach(function (d, i) {
+      var cfg = LVL_DOTS[i % LVL_DOTS.length];
+      tl.fromTo(d,
+        { x: cfg.x, y: cfg.y + 4, scale: 0, opacity: 0, transformOrigin: "50% 50%" },
+        {
+          y: cfg.y - 2, scale: cfg.s, duration: 1.0, ease: "power2.out",
+          keyframes: { opacity: [0, 0.95, 0.95, 0] }
+        }, 0.22 + i * 0.08);
+    });
+
+    // and the cat itself pops — the badge alone reads as a screen
+    // effect, the hop is what makes it the cat's moment
+    tl.to(el.bodyGroup, {
+      y: -7, scaleY: 1.06, scaleX: 0.96, duration: 0.17, ease: "power2.out",
+      svgOrigin: "100 137"
+    }, 0.05);
+    tl.to(el.bodyGroup, {
+      y: 0, scaleY: 1, scaleX: 1, duration: 0.72, ease: "elastic.out(1, 0.45)"
+    }, 0.22);
+    tl.to(el.headBob, {
+      y: -4, rotation: -3, duration: 0.17, ease: "power2.out", transformOrigin: "50% 100%"
+    }, 0.05);
+    tl.to(el.headBob, {
+      y: 0, rotation: 0, duration: 0.72, ease: "elastic.out(1, 0.5)"
+    }, 0.22);
+
+    tl.timeScale(speed || 1);
     return tl;
   }
 
@@ -494,12 +648,12 @@
   --------------------------------------------------------------- */
   function impactBurst(paw) {
     var tl = gsap.timeline();
-    tl.set(el.anger, {
-      x: paw[0] + 4, y: paw[1] - 8, opacity: 0,
-      scale: 0.35, rotation: -22, transformOrigin: "50% 50%"
+    tl.set(el.pawprint, {
+      x: paw[0] + 2, y: paw[1] - 4, opacity: 0,
+      scale: 0.4, rotation: 18, transformOrigin: "50% 50%"
     }, 0);
-    tl.to(el.anger, { opacity: 1, scale: 1.4, rotation: 10, duration: 0.1, ease: "back.out(3)" }, 0);
-    tl.to(el.anger, { opacity: 0, scale: 1.7, duration: 0.24, ease: "power2.in" }, 0.1);
+    tl.to(el.pawprint, { opacity: 0.85, scale: 1.15, rotation: 6, duration: 0.09, ease: "back.out(3)" }, 0);
+    tl.to(el.pawprint, { opacity: 0, scale: 1.4, duration: 0.26, ease: "power2.in" }, 0.11);
     return tl;
   }
 
@@ -513,6 +667,7 @@
 
     current = "swiping";                        // not a real pose key — see onComplete
     tempo = 1;
+    var mine = ++generation;                    // supersede any pose still morphing
 
     var p = S.POSES.confront;
     var restFn = p.legs.fn;
@@ -536,11 +691,16 @@
 
     var tl = gsap.timeline({
       onComplete: function () {
-        gsap.set(el.anger, { opacity: 0 });
+        // something grabbed the cat mid-swing (a drag, a snooze click);
+        // whatever it switched to is the current pose, don't stomp it
+        if (mine !== generation) { return; }
+        actionTl = null;
+        gsap.set(el.pawprint, { opacity: 0 });
         current = null;                          // let setState re-enter cleanly
         setState("confront", true);
       }
     });
+    actionTl = tl;
 
     // 0.00 — sync onto the confront stance. Always, even if `current` already
     // says "confront": that flag flips the instant setState() is called, not
@@ -597,108 +757,6 @@
   }
 
   /* ---------------------------------------------------------------
-     alertNotice — startled exclamation mark `!` then burst into anger 💢
-     ---------------------------------------------------------------
-     Fires when the cat first catches doomscrolling:
-       1. Head snaps upright, ears perk tall, eyes widen alert.
-       2. Exclamation mark `!` pops up above brow with bounce.
-       3. Holds a stunned beat ("Cat noticed it!").
-       4. `!` pops out as the 💢 anger vein bursts in and face morphs angry.
-     Returns GSAP timeline (await-able).
-  --------------------------------------------------------------- */
-  function alertNotice(onNoticed) {
-    if (!el.cat) { return gsap.timeline(); }
-
-    clearLoops();
-    clearLife();
-    gsap.set(el.zzz, { opacity: 0 });
-    gsap.set(heartEls, { opacity: 0 });
-    gsap.set(el.anger, { opacity: 0 });
-
-    current = "alerting";
-    tempo = 1;
-
-    var alertPos = (S.POSES.alert && S.POSES.alert.alert) || { x: 172, y: 32 };
-    var tl = gsap.timeline({
-      onComplete: function () {
-        if (el.alert) { gsap.set(el.alert, { opacity: 0 }); }
-        current = null;
-        if (typeof onNoticed === "function") { onNoticed(); }
-      }
-    });
-
-    // 1. Snap into startled pose
-    var poseTl = applyPose("alert", 0.14);
-    if (poseTl) { tl.add(poseTl, 0); }
-
-    tl.to(el.headBob, {
-      y: -4.5, rotation: -3.5, scaleY: 1.05, scaleX: 0.97,
-      duration: 0.14, ease: "back.out(3.5)", transformOrigin: "50% 100%"
-    }, 0);
-    tl.to(el.bodyGroup, {
-      y: -1.2, scaleY: 1.02, scaleX: 0.98,
-      duration: 0.14, ease: "back.out(2)", svgOrigin: "108 137"
-    }, 0);
-
-    // 2. Pop exclamation mark `!`
-    if (el.alert) {
-      tl.set(el.alert, {
-        x: alertPos.x, y: alertPos.y, opacity: 0,
-        scale: 0.2, rotation: -18, transformOrigin: "50% 100%"
-      }, 0.04);
-      tl.to(el.alert, {
-        opacity: 1, scale: 1.25, rotation: 6,
-        duration: 0.16, ease: "back.out(4)"
-      }, 0.04);
-      tl.to(el.alert, {
-        scale: 1, rotation: 0,
-        duration: 0.10, ease: "power2.out"
-      }, 0.20);
-
-      // 3. Stunned freeze beat ("Cat noticed it!")
-      tl.to(el.headBob, {
-        y: -3.8, rotation: -2, duration: 0.2, ease: "sine.inOut"
-      }, 0.30);
-      tl.to(el.alert, {
-        scale: 1.08, y: alertPos.y - 1.5, duration: 0.25,
-        ease: "sine.inOut", yoyo: true, repeat: 1
-      }, 0.35);
-
-      // 4. `!` pops out and 💢 anger vein bursts in
-      tl.to(el.alert, {
-        opacity: 0, scale: 1.35, y: alertPos.y - 4,
-        duration: 0.14, ease: "power2.in"
-      }, 0.92);
-    }
-
-    var angerPos = (S.POSES.angry && S.POSES.angry.anger) || { x: 176, y: 34 };
-    tl.set(el.anger, {
-      x: angerPos.x, y: angerPos.y, opacity: 0,
-      scale: 0.3, rotation: -20, transformOrigin: "50% 50%"
-    }, 1.02);
-    tl.to(el.anger, {
-      opacity: 1, scale: 1.2, rotation: 8,
-      duration: 0.16, ease: "back.out(3.5)"
-    }, 1.02);
-    tl.to(el.anger, {
-      scale: 1.0, rotation: 0,
-      duration: 0.10, ease: "power2.out"
-    }, 1.18);
-
-    // Morph face to angry
-    var angryPose = S.POSES.angry;
-    morph(el.head, S.closedPath(angryPose.head), 0.18, "power2.out", 1.02, tl);
-    morph(el.earL, S.closedPath(angryPose.earL), 0.18, "power2.out", 1.02, tl);
-    morph(el.earR, S.closedPath(angryPose.earR), 0.18, "power2.out", 1.02, tl);
-    morph(el.eyeL, S.closedPath(S.EYES.left.angry), 0.15, "power2.out", 1.02, tl);
-    morph(el.eyeR, S.closedPath(S.EYES.right.angry), 0.15, "power2.out", 1.02, tl);
-    morph(el.mouth, S.openPath(angryPose.mouth), 0.18, "power2.out", 1.02, tl);
-
-    tl.timeScale(speed || 1);
-    return tl;
-  }
-
-  /* ---------------------------------------------------------------
      public API
   --------------------------------------------------------------- */
   function setState(name, immediate) {
@@ -712,11 +770,14 @@
     clearLoops();
     gsap.set(el.zzz, { opacity: 0 });
     gsap.set(el.anger, { opacity: 0 });
-    if (el.alert) { gsap.set(el.alert, { opacity: 0 }); }
+    gsap.set(el.pawprint, { opacity: 0 });
+    gsap.set(el.levelup, { opacity: 0 });
     gsap.set(heartEls, { opacity: 0 });
 
+    var mine = ++generation;
     var dur = immediate ? 0 : 0.62;
     var tl = applyPose(name, dur);
+    poseTl = tl;
 
     // coming to a halt: glide back to centre and turn to face front-right
     if (previousPose && previousPose.gait && !pose.gait && tl && roamEnabled) {
@@ -724,6 +785,10 @@
     }
 
     var begin = function () {
+      // a newer state (or a swipe) claimed the rig while this pose was
+      // still morphing — that one owns the loops now, so stay out of it
+      if (mine !== generation) { return; }
+      poseTl = null;
       loop = pose.gait ? gaitLoop(name) : LOOPS[name]();
       loop.timeScale(speed * tempo);
 
@@ -737,7 +802,7 @@
         props.timeScale(speed);
       }
       if (name === "sleep") {
-        props = startZzz();
+        props = startZzz(facingSign());
         props.timeScale(speed);
         gsap.to(el.zzz, { opacity: 1, duration: 0.5 });
       }
@@ -759,15 +824,18 @@
 
   /* Which way the cat faces: 1 = right, -1 = left. */
   function setFacing(dir, dur) {
-    var targetScaleX = dir < 0 ? -1 : 1;
+    var sign = dir < 0 ? -1 : 1;
+    var turning = sign !== facingSign();
     gsap.to(el.cat, {
-      scaleX: targetScaleX,
+      scaleX: sign,
       duration: dur === undefined ? 0.42 : dur,
       ease: "power2.inOut"
     });
-    if (current === "sleep" && props) {
+    // the Zzz bake the facing into their own counter-flip, so a cat that
+    // turns over in its sleep needs them rebuilt against the new side
+    if (turning && current === "sleep" && props) {
       props.kill();
-      props = startZzz();
+      props = startZzz(sign);
       props.timeScale(speed);
     }
   }
@@ -779,10 +847,13 @@
 
     collect();
     gsap.set(el.cat, { svgOrigin: "100 104" });
-    angerEls.forEach(function (a, i) { a.setAttribute("d", S.openPath(S.ANGER[i])); });
+    S.ANGER.forEach(function (d, i) { angerEls[i].setAttribute("d", d); });
     gsap.set(el.anger, { opacity: 0 });
-    if (el.alertStem) { el.alertStem.setAttribute("d", S.ALERT_STEM); }
-    if (el.alert) { gsap.set(el.alert, { opacity: 0 }); }
+    el.pawprint.setAttribute("d", S.PAWPRINT);
+    gsap.set(el.pawprint, { opacity: 0 });
+    sparkEls.forEach(function (s) { s.setAttribute("d", S.SPARK); });
+    gsap.set(el.levelup, { opacity: 0 });
+    gsap.set(sparkEls.concat(dotEls, streakEls), { opacity: 0 });
     heartEls.forEach(function (h) { h.setAttribute("d", S.HEART); });
     gsap.set(heartEls, { opacity: 0 });
     current = null;
@@ -794,13 +865,13 @@
     setState: setState,
     setSpeed: setSpeed,
     setFacing: setFacing,
-    getFacing: getFacing,
-    /* One-shot startled notice sequence (`!` mark -> 💢 mark).
-       Returns timeline (await it to know when reaction completes). */
-    alert: alertNotice,
     /* One-shot paw strike. `onImpact` fires on the contact frame;
        returns the timeline (await it to know when the cat has settled). */
     swipe: swipe,
+    /* One-shot level-up celebration. Plays over the current pose
+       instead of replacing it, so it never disturbs the state machine.
+       Returns the timeline. */
+    levelUp: levelUp,
     /* Design units per second the paws are currently covering. The
        desktop overlay multiplies this by its px-per-unit scale to move
        the cat across the screen without the feet skating. */

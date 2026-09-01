@@ -1,8 +1,8 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Core permissions for the overlay and the settings window. Without the event permissions the frontend cannot listen('bust') / emit(), so the cat never runs its countdown and never closes anything.",
-  "windows": ["pet", "settings"],
+  "description": "Core permissions for the overlay, the settings window, and the small hitbox window. Without the event permissions the frontend cannot listen('bust') / emit(), so the cat never runs its countdown and never closes anything; the hitbox window specifically needs emit() to relay clicks to the overlay.",
+  "windows": ["pet", "settings", "hitbox"],
   "permissions": [
     "core:default",
     "core:event:default",
