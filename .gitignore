@@ -20,3 +20,6 @@ badkat/src-tauri/icons/ios/
 
 .DS_Store
 Thumbs.db
+
+# secrets — never commit this, whatever else changes here
+CREDENTIALS.md
